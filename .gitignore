@@ -1,0 +1,18 @@
+bin/
+obj/
+publish/
+release-staging/
+artifacts/
+tools/
+src/.vs/
+src/*/.vs/
+*.suo
+*.user
+*.DotSettings
+build/Fody*
+*.vs/
+
+# Personal / local runtime configs (do not publish character layouts)
+EVE-F-Preview.json
+EVE-O-Preview.json
+**/thumbs/

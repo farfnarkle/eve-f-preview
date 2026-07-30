@@ -1,0 +1,534 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
+using EveFPreview.Configuration;
+using EveFPreview.Mediator.Messages;
+using EveFPreview.Services;
+using EveFPreview.View;
+using MediatR;
+
+namespace EveFPreview.Presenters
+{
+	public class MainFormPresenter : Presenter<IMainFormView>, IMainFormPresenter
+	{
+		#region Private constants
+		private const string FORUM_URL = @"https://forums.eveonline.com/t/eve-o-preview-v8-0-2-0";
+		#endregion
+
+		#region Private fields
+		private readonly IMediator _mediator;
+		private readonly IThumbnailConfiguration _configuration;
+		private readonly IConfigurationStorage _configurationStorage;
+		private readonly IProcessMonitor _processMonitor;
+		private readonly IThumbnailManager _thumbnailManager;
+		private readonly ICharacterPortraitService _characterPortraitService;
+		private readonly IDictionary<string, IThumbnailDescription> _descriptionsCache;
+		private bool _suppressSizeNotifications;
+
+		private bool _exitApplication;
+		private bool _portraitRefreshInProgress;
+		#endregion
+
+		public MainFormPresenter(IApplicationController controller, IMainFormView view, IMediator mediator, IThumbnailConfiguration configuration, IConfigurationStorage configurationStorage, IProcessMonitor processMonitor, IThumbnailManager thumbnailManager, ICharacterPortraitService characterPortraitService)
+			: base(controller, view)
+		{
+			this._mediator = mediator;
+			this._configuration = configuration;
+			this._configurationStorage = configurationStorage;
+			this._processMonitor = processMonitor;
+			this._thumbnailManager = thumbnailManager;
+			this._characterPortraitService = characterPortraitService;
+
+			this._descriptionsCache = new Dictionary<string, IThumbnailDescription>();
+
+			this._suppressSizeNotifications = false;
+			this._exitApplication = false;
+
+			this.View.FormActivated = this.Activate;
+			this.View.FormMinimized = this.Minimize;
+			this.View.FormCloseRequested = this.Close;
+			this.View.ApplicationSettingsChanged = this.SaveApplicationSettings;
+			this.View.GlobalShortcutSettingsChanged = this.SaveGlobalShortcutSettings;
+			this.View.ThumbnailsSizeChanged = this.UpdateThumbnailsSize;
+			this.View.ThumbnailStateChanged = this.UpdateThumbnailState;
+			this.View.DocumentationLinkActivated = this.OpenDocumentationLink;
+			this.View.ApplicationExitRequested = this.ExitApplication;
+			this.View.CloseAllEveClientsRequested = this.CloseAllEveClients;
+			this.View.ConfigureShortcutHotkeyRecording(
+				this._thumbnailManager.SuspendGlobalHotkeys,
+				this._thumbnailManager.ResumeGlobalHotkeys);
+			this.View.RefreshPortraitsRequested = this.RefreshPortraits;
+			this.View.SetConfigurationStorage(this._configurationStorage);
+			this.View.ConfigProfileChanged = this.ReloadApplicationSettingsAfterProfileChange;
+			this._thumbnailManager.AutoSettingsSyncStatusReported = (success, message) =>
+				this.View.SetAutoSettingsSyncStatus(success, message);
+
+			this.View.IconName = this._configuration.IconName;
+		}
+
+		private void Activate()
+		{
+			this._suppressSizeNotifications = true;
+			this.View.BeginLoadSettings();
+			try
+			{
+				this.LoadApplicationSettings();
+				this.View.SetDocumentationUrl(MainFormPresenter.FORUM_URL);
+				this.View.SetVersionInfo(this.GetApplicationVersion());
+				if (this._configuration.StartMinimized)
+				{
+					this.View.Minimize();
+				}
+
+				this._mediator.Send(new StartService());
+				this._characterPortraitService.SyncMissingPortraitsFromConfiguration();
+			}
+			finally
+			{
+				this.View.EndLoadSettings();
+				this._suppressSizeNotifications = false;
+			}
+		}
+
+		private async void RefreshPortraits()
+		{
+			if (this._portraitRefreshInProgress)
+			{
+				return;
+			}
+
+			this._portraitRefreshInProgress = true;
+			this.View.SetRefreshPortraitsEnabled(false);
+			try
+			{
+				await this._characterPortraitService.RefreshAllConfiguredPortraitsAsync().ConfigureAwait(true);
+			}
+			finally
+			{
+				this._portraitRefreshInProgress = false;
+				this.View.SetRefreshPortraitsEnabled(true);
+			}
+		}
+
+		private void Minimize()
+		{
+			if (!this._configuration.MinimizeToTray)
+			{
+				return;
+			}
+
+			this.View.Hide();
+		}
+
+		private void Close(ViewCloseRequest request)
+		{
+			if (this._exitApplication || !this.View.MinimizeToTray)
+			{
+				this._mediator.Send(new StopService()).Wait();
+
+				this._configurationStorage.Save();
+				request.Allow = true;
+				return;
+			}
+
+			request.Allow = false;
+			this.View.Minimize();
+		}
+
+		/// <summary>Reloads settings into the UI (without restarting the service) after the view switched/imported a config profile.</summary>
+		private void ReloadApplicationSettingsAfterProfileChange()
+		{
+			this.View.BeginLoadSettings();
+			try
+			{
+				this.LoadApplicationSettings();
+			}
+			finally
+			{
+				this.View.EndLoadSettings();
+			}
+
+			this._thumbnailManager.ReloadHotkeys();
+		}
+
+		private async void UpdateThumbnailsSize()
+		{
+			if (!this._suppressSizeNotifications)
+			{
+				this.SaveApplicationSettings();
+				await this._mediator.Publish(new ThumbnailConfiguredSizeUpdated());
+			}
+		}
+
+		private void LoadApplicationSettings()
+		{
+			this._configurationStorage.Load();
+
+			this.View.MinimizeToTray = this._configuration.MinimizeToTray;
+			this.View.StartMinimized = this._configuration.StartMinimized;
+
+			this.View.ThumbnailOpacity = this._configuration.ThumbnailOpacity;
+
+			this.View.EnableClientLayoutTracking = this._configuration.EnableClientLayoutTracking;
+			this.View.HideActiveClientThumbnail = this._configuration.HideActiveClientThumbnail;
+			this.View.MinimizeInactiveClients = this._configuration.MinimizeInactiveClients;
+			this.View.HideCaptionOnClients = this._configuration.HideCaptionOnClients;
+			this.View.WindowsAnimationStyle = ViewAnimationStyleConverter.Convert(this._configuration.WindowsAnimationStyle);
+			this.View.ShowThumbnailsAlwaysOnTop = this._configuration.ShowThumbnailsAlwaysOnTop;
+			this.View.PreventPreviews = this._configuration.PreventPreviews;
+			this.View.HideThumbnailsOnLostFocus = this._configuration.HideThumbnailsOnLostFocus;
+			this.View.OnlyRegisterCycleHotkeysWhenEveFocused = this._configuration.OnlyRegisterCycleHotkeysWhenEveFocused;
+			this.View.DynamicCycleGroup = this._configuration.DynamicCycleGroup;
+			this.View.EnableAccountBasedThumbnailPositioning = this._configuration.EnableAccountBasedThumbnailPositioning;
+			this.View.EnableAutoSettingsSync = this._configuration.EnableAutoSettingsSync;
+			this.View.EnablePerClientThumbnailLayouts = this._configuration.EnablePerClientThumbnailLayouts;
+
+			this.View.SetThumbnailSizeLimitations(this._configuration.ThumbnailMinimumSize, this._configuration.ThumbnailMaximumSize);
+			this.View.ThumbnailSize = this._configuration.ThumbnailSize;
+			this.View.EnableOverwatchMode = this._configuration.EnableOverwatchMode;
+			this.View.FocusedThumbnailSize = this._configuration.FocusedThumbnailSize;
+			this.View.FocusedThumbnailLocation = this._configuration.FocusedThumbnailLocation;
+
+			this.View.NewPreviewSpawnLocation = this._configuration.NewPreviewSpawnLocation;
+			this.View.NewPreviewAutoTile = this._configuration.NewPreviewAutoTile;
+
+			this.View.EnableThumbnailZoom = this._configuration.ThumbnailZoomEnabled;
+			this.View.ThumbnailZoomFactor = this._configuration.ThumbnailZoomFactor;
+			this.View.ThumbnailZoomAnchor = ViewZoomAnchorConverter.Convert(this._configuration.ThumbnailZoomAnchor);
+			this.View.OverlayLabelAnchor = ViewZoomAnchorConverter.Convert(this._configuration.OverlayLabelAnchor);
+			this.View.CycleGroupIndicatorAnchor = ViewZoomAnchorConverter.Convert(this._configuration.CycleGroupIndicatorAnchor);
+
+			this.View.ShowThumbnailOverlays = this._configuration.ShowThumbnailOverlays;
+			this.View.ShowThumbnailFrames = this._configuration.ShowThumbnailFrames;
+			this.View.ShowSystemNameOnThumbnail = this._configuration.ShowSystemNameOnThumbnail;
+			this.View.LockThumbnailLocation = this._configuration.LockThumbnailLocation;
+			this.View.ThumbnailSnapToGrid = this._configuration.ThumbnailSnapToGrid;
+			this.View.ThumbnailSnapToGridSizeX = this._configuration.ThumbnailSnapToGridSizeX;
+			this.View.ThumbnailSnapToGridSizeY = this._configuration.ThumbnailSnapToGridSizeY;
+			this.View.ThumbnailSnapToEdges = this._configuration.ThumbnailSnapToEdges;
+			this.View.EnableActiveClientHighlight = this._configuration.EnableActiveClientHighlight;
+			this.View.ActiveClientHighlightColor = this._configuration.ActiveClientHighlightColor;
+			this.View.PreventPreviewColor = this._configuration.PreventPreviewColor;
+
+			this.View.OverlayLabelColor = this._configuration.OverlayLabelColor;
+			this.View.OverlayLabelFont = this._configuration.OverlayLabelFont;
+
+
+			this.View.IconName = this._configuration.IconName;
+			this.View.SetGlobalShortcutSettings(this.CreateGlobalShortcutSettingsFromConfiguration());
+			this.View.SetSettingsSyncConfiguration(this._configuration, () => this._configurationStorage.Save());
+		}
+
+		private GlobalShortcutSettings CreateGlobalShortcutSettingsFromConfiguration()
+		{
+			return new GlobalShortcutSettings
+			{
+				CycleGroup1Forward = this.GetHotkeyDisplay(this._configuration.CycleGroup1ForwardHotkeys),
+				CycleGroup1Backward = this.GetHotkeyDisplay(this._configuration.CycleGroup1BackwardHotkeys),
+				CycleGroup2Forward = this.GetHotkeyDisplay(this._configuration.CycleGroup2ForwardHotkeys),
+				CycleGroup2Backward = this.GetHotkeyDisplay(this._configuration.CycleGroup2BackwardHotkeys),
+				CycleGroup3Forward = this.GetHotkeyDisplay(this._configuration.CycleGroup3ForwardHotkeys),
+				CycleGroup3Backward = this.GetHotkeyDisplay(this._configuration.CycleGroup3BackwardHotkeys),
+				CycleGroup4Forward = this.GetHotkeyDisplay(this._configuration.CycleGroup4ForwardHotkeys),
+				CycleGroup4Backward = this.GetHotkeyDisplay(this._configuration.CycleGroup4BackwardHotkeys),
+				CycleGroup5Forward = this.GetHotkeyDisplay(this._configuration.CycleGroup5ForwardHotkeys),
+				CycleGroup5Backward = this.GetHotkeyDisplay(this._configuration.CycleGroup5BackwardHotkeys),
+				DynamicCycleForward = this.GetHotkeyDisplay(this._configuration.DynamicCycleForwardHotkeys),
+				DynamicCycleBackward = this.GetHotkeyDisplay(this._configuration.DynamicCycleBackwardHotkeys),
+				MinimizeAllClients = this.GetHotkeyDisplay(this._configuration.MinimizeAllClientsHotkeys),
+				ToggleThumbnails = this.GetHotkeyDisplay(this._configuration.ToggleThumbnailsHotkeys),
+				ClickThroughModifier = this.GetHotkeyDisplay(this._configuration.ClickThroughModifierHotkeys)
+			};
+		}
+
+		private string GetHotkeyDisplay(List<string> hotkeys)
+		{
+			string raw = HotkeyFormatting.GetPrimaryHotkey(hotkeys);
+			if (string.IsNullOrWhiteSpace(raw))
+			{
+				return string.Empty;
+			}
+
+			Keys keys = this._configuration.StringToKey(raw);
+			if (keys == Keys.None)
+			{
+				return raw.Trim();
+			}
+
+			string formatted = HotkeyFormatting.ToDisplayString(keys);
+			return string.IsNullOrEmpty(formatted) ? raw.Trim() : formatted;
+		}
+
+		private void ApplyGlobalShortcutSettingsToConfiguration(GlobalShortcutSettings settings)
+		{
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.CycleGroup1ForwardHotkeys, settings.CycleGroup1Forward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.CycleGroup1BackwardHotkeys, settings.CycleGroup1Backward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.CycleGroup2ForwardHotkeys, settings.CycleGroup2Forward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.CycleGroup2BackwardHotkeys, settings.CycleGroup2Backward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.CycleGroup3ForwardHotkeys, settings.CycleGroup3Forward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.CycleGroup3BackwardHotkeys, settings.CycleGroup3Backward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.CycleGroup4ForwardHotkeys, settings.CycleGroup4Forward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.CycleGroup4BackwardHotkeys, settings.CycleGroup4Backward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.CycleGroup5ForwardHotkeys, settings.CycleGroup5Forward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.CycleGroup5BackwardHotkeys, settings.CycleGroup5Backward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.DynamicCycleForwardHotkeys, settings.DynamicCycleForward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.DynamicCycleBackwardHotkeys, settings.DynamicCycleBackward);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.MinimizeAllClientsHotkeys, settings.MinimizeAllClients);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.ToggleThumbnailsHotkeys, settings.ToggleThumbnails);
+			HotkeyFormatting.SetPrimaryHotkey(this._configuration.ClickThroughModifierHotkeys, settings.ClickThroughModifier);
+		}
+
+		private async void SaveGlobalShortcutSettings()
+		{
+			this.ApplyGlobalShortcutSettingsToConfiguration(this.View.GetGlobalShortcutSettings());
+			this._configurationStorage.Save();
+			await this._mediator.Publish(new ThumbnailHotkeysUpdated());
+			await this._mediator.Send(new SaveConfiguration());
+		}
+
+		private async void SaveApplicationSettings()
+		{
+			this._configuration.MinimizeToTray = this.View.MinimizeToTray;
+			this._configuration.StartMinimized = this.View.StartMinimized;
+
+			this._configuration.ThumbnailOpacity = (float)this.View.ThumbnailOpacity;
+
+			this._configuration.EnableClientLayoutTracking = this.View.EnableClientLayoutTracking;
+			this._configuration.HideActiveClientThumbnail = this.View.HideActiveClientThumbnail;
+			this._configuration.MinimizeInactiveClients = this.View.MinimizeInactiveClients;
+
+			if (this._configuration.HideCaptionOnClients != this.View.HideCaptionOnClients ) {
+				this._configuration.HideCaptionOnClients = this.View.HideCaptionOnClients;
+				await this._mediator.Publish(new ThumbnailFrameSettingsUpdated());
+			}
+			this._configuration.WindowsAnimationStyle = ViewAnimationStyleConverter.Convert(this.View.WindowsAnimationStyle); 
+            this._configuration.ShowThumbnailsAlwaysOnTop = this.View.ShowThumbnailsAlwaysOnTop;
+
+			if (this._configuration.PreventPreviews != this.View.PreventPreviews)
+			{
+				this._configuration.PreventPreviews = this.View.PreventPreviews;
+				await this._mediator.Publish(new ThumbnailFrameSettingsUpdated());
+			}
+
+			this._configuration.HideThumbnailsOnLostFocus = this.View.HideThumbnailsOnLostFocus;
+			this._configuration.OnlyRegisterCycleHotkeysWhenEveFocused = this.View.OnlyRegisterCycleHotkeysWhenEveFocused;
+			this._configuration.DynamicCycleGroup = this.View.DynamicCycleGroup;
+			this._configuration.EnableAccountBasedThumbnailPositioning = this.View.EnableAccountBasedThumbnailPositioning;
+
+			bool enableAutoSync = this.View.EnableAutoSettingsSync;
+			if (enableAutoSync && !EveAutoSettingsSyncRunner.HasConfiguredProfile(this._configuration))
+			{
+				System.Windows.Forms.MessageBox.Show(
+					"Enable auto settings sync needs a saved sync profile first.\n\n" +
+					"Open the Settings Sync tab, run a manual Sync once (that saves source, destinations, and channels), then turn this back on.",
+					"Auto settings sync",
+					System.Windows.Forms.MessageBoxButtons.OK,
+					System.Windows.Forms.MessageBoxIcon.Information);
+				enableAutoSync = false;
+				this.View.EnableAutoSettingsSync = false;
+			}
+
+			this._configuration.EnableAutoSettingsSync = enableAutoSync;
+			this._configuration.EnablePerClientThumbnailLayouts = this.View.EnablePerClientThumbnailLayouts;
+
+			this._configuration.ThumbnailSize = this.View.ThumbnailSize;
+
+			bool overwatchModeChanged = this._configuration.EnableOverwatchMode != this.View.EnableOverwatchMode;
+			this._configuration.EnableOverwatchMode = this.View.EnableOverwatchMode;
+			if (overwatchModeChanged)
+			{
+				await this._mediator.Publish(new ThumbnailOverwatchSettingsUpdated());
+			}
+
+			this._configuration.FocusedThumbnailSize = this.View.FocusedThumbnailSize;
+			this._configuration.FocusedThumbnailLocation = this.View.FocusedThumbnailLocation;
+
+			this._configuration.NewPreviewSpawnLocation = this.View.NewPreviewSpawnLocation;
+			this._configuration.NewPreviewAutoTile = this.View.NewPreviewAutoTile;
+
+			this._configuration.ThumbnailZoomEnabled = this.View.EnableThumbnailZoom;
+			this._configuration.ThumbnailZoomFactor = this.View.ThumbnailZoomFactor;
+			this._configuration.ThumbnailZoomAnchor = ViewZoomAnchorConverter.Convert(this.View.ThumbnailZoomAnchor);
+			this._configuration.OverlayLabelAnchor = ViewZoomAnchorConverter.Convert(this.View.OverlayLabelAnchor);
+
+			if (this._configuration.CycleGroupIndicatorAnchor != ViewZoomAnchorConverter.Convert(this.View.CycleGroupIndicatorAnchor))
+			{
+				this._configuration.CycleGroupIndicatorAnchor = ViewZoomAnchorConverter.Convert(this.View.CycleGroupIndicatorAnchor);
+				await this._mediator.Publish(new ThumbnailCycleGroupIndicatorUpdated());
+			}
+
+			this._configuration.ShowThumbnailOverlays = this.View.ShowThumbnailOverlays;
+			this._configuration.ShowSystemNameOnThumbnail = this.View.ShowSystemNameOnThumbnail;
+			if (this._configuration.ShowThumbnailFrames != this.View.ShowThumbnailFrames)
+			{
+				this._configuration.ShowThumbnailFrames = this.View.ShowThumbnailFrames;
+				await this._mediator.Publish(new ThumbnailFrameSettingsUpdated());
+			}
+
+            this._configuration.LockThumbnailLocation = this.View.LockThumbnailLocation;
+			this._configuration.ThumbnailSnapToGrid = this.View.ThumbnailSnapToGrid;
+			this._configuration.ThumbnailSnapToGridSizeX = this.View.ThumbnailSnapToGridSizeX;
+            this._configuration.ThumbnailSnapToGridSizeY = this.View.ThumbnailSnapToGridSizeY;
+			this._configuration.ThumbnailSnapToEdges = this.View.ThumbnailSnapToEdges;
+
+            this._configuration.EnableActiveClientHighlight = this.View.EnableActiveClientHighlight;
+			this._configuration.ActiveClientHighlightColor = this.View.ActiveClientHighlightColor;
+
+			if (this._configuration.PreventPreviewColor != this.View.PreventPreviewColor)
+			{
+				this._configuration.PreventPreviewColor = this.View.PreventPreviewColor;
+				await this._mediator.Publish(new ThumbnailFrameSettingsUpdated());
+			}
+
+			this._configuration.OverlayLabelColor = this.View.OverlayLabelColor;
+			this._configuration.OverlayLabelFont = this.View.OverlayLabelFont;
+
+			this._configuration.IconName = this.View.IconName;
+
+			this._configurationStorage.Save();
+
+			this.View.RefreshZoomSettings();
+
+			await this._mediator.Send(new SaveConfiguration());
+		}
+
+
+		public void AddThumbnails(IList<string> thumbnailTitles)
+		{
+			IList<IThumbnailDescription> descriptions = new List<IThumbnailDescription>(thumbnailTitles.Count);
+
+			lock (this._descriptionsCache)
+			{
+				foreach (string title in thumbnailTitles)
+				{
+					IThumbnailDescription description = this.CreateThumbnailDescription(title);
+					this._descriptionsCache[title] = description;
+
+					descriptions.Add(description);
+				}
+			}
+
+			this.View.AddThumbnails(descriptions);
+		}
+
+		public void RemoveThumbnails(IList<string> thumbnailTitles)
+		{
+			IList<IThumbnailDescription> descriptions = new List<IThumbnailDescription>(thumbnailTitles.Count);
+
+			lock (this._descriptionsCache)
+			{
+				foreach (string title in thumbnailTitles)
+				{
+					if (!this._descriptionsCache.TryGetValue(title, out IThumbnailDescription description))
+					{
+						continue;
+					}
+
+					this._descriptionsCache.Remove(title);
+					descriptions.Add(description);
+				}
+			}
+
+			this.View.RemoveThumbnails(descriptions);
+		}
+
+		private IThumbnailDescription CreateThumbnailDescription(string title)
+		{
+			bool isDisabled = this._configuration.IsThumbnailDisabled(title);
+			return new ThumbnailDescription(title, isDisabled);
+		}
+
+		private async void UpdateThumbnailState(String title)
+		{
+			if (this._descriptionsCache.TryGetValue(title, out IThumbnailDescription description))
+			{
+				this._configuration.ToggleThumbnail(title, description.IsDisabled);
+			}
+
+			await this._mediator.Send(new SaveConfiguration());
+		}
+
+		public void UpdateThumbnailSize(Size size)
+		{
+			this._suppressSizeNotifications = true;
+			this.View.ThumbnailSize = size;
+			this._suppressSizeNotifications = false;
+		}
+
+		private void OpenDocumentationLink()
+		{
+			// funtimes
+			// https://brockallen.com/2016/09/24/process-start-for-urls-on-net-core/
+			// https://github.com/dotnet/runtime/issues/17938
+
+			// TODO Move out to a separate service / presenter / message handler
+#if LINUX
+			Process.Start("xdg-open", new Uri(MainFormPresenter.FORUM_URL).AbsoluteUri);
+#else
+			ProcessStartInfo processStartInfo = new ProcessStartInfo(new Uri(MainFormPresenter.FORUM_URL).AbsoluteUri);
+			processStartInfo.UseShellExecute = true;
+			Process.Start(processStartInfo);
+#endif
+		}
+
+		private string GetApplicationVersion()
+		{
+			var assembly = System.Reflection.Assembly.GetEntryAssembly();
+			string versionLabel = assembly
+				?.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+				.OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+				.FirstOrDefault()
+				?.InformationalVersion;
+
+			if (string.IsNullOrWhiteSpace(versionLabel))
+			{
+				Version version = assembly.GetName().Version;
+				versionLabel = version.Revision == 0
+					? $"{version.Major}.{version.Minor}.{version.Build}"
+					: version.ToString();
+			}
+			else
+			{
+				// Strip any Source Link / build metadata suffix (e.g. 1.0.0+abc123)
+				int metaIndex = versionLabel.IndexOf('+');
+				if (metaIndex >= 0)
+				{
+					versionLabel = versionLabel.Substring(0, metaIndex);
+				}
+			}
+
+			string target = "Windows";
+#if LINUX
+			target = "Linux";
+#endif
+			return $"{versionLabel} {target}";
+		}
+
+		private void ExitApplication()
+		{
+			this._exitApplication = true;
+			this.View.Close();
+		}
+
+		private void CloseAllEveClients()
+		{
+			Form owner = this.View as Form;
+			DialogResult confirm = MessageBox.Show(
+				owner,
+				"This will close all eve online windows are you sure?",
+				"Close all EVE clients",
+				MessageBoxButtons.YesNo,
+				MessageBoxIcon.Warning,
+				MessageBoxDefaultButton.Button2);
+			if (confirm != DialogResult.Yes)
+			{
+				return;
+			}
+
+			this._processMonitor.CloseAllMonitoredClients();
+		}
+	}
+}

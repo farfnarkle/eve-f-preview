@@ -1,0 +1,38 @@
+---
+description: Deploy via deploy.bat after app-affecting edits unless the user opts out for that turn.
+alwaysApply: true
+---
+
+When a turn changes **app-affecting** files, end the turn by running **only** `deploy.bat` from the repo root (do not run separate `dotnet clean` / `dotnet build` / `dotnet publish` steps).
+
+**Deploy when you change any of:**
+- `src/Eve-F-Preview/**` (C#, designer, resx, icons, csproj, manifest, etc.)
+- `src/EVE-F-Preview.sln` or other files that affect the built executable
+- `deploy.bat` itself (only if you need to verify the deploy script)
+
+**Do not deploy for:**
+- Docs (`README.md`, `TESTING-*.md`, `LICENSE`, etc.)
+- Scripts used for release/ops only (`create-release.ps1`, tools scripts)
+- Config samples / JSON next to the repo that are not compiled in
+- Cursor rules (`.cursor/**`), git metadata, assets not embedded in the app
+- Turns that only answer questions and touch no app files
+
+**Exception:** Skip deploy if the user explicitly says not to deploy in that turn (e.g. “don’t deploy”, “skip deploy”, “no deploy”).
+
+```
+deploy.bat
+```
+
+Or from PowerShell:
+
+```powershell
+cd "C:\Users\cmatt\Documents\Code\farfnarkle\eve-f-preview"
+.\deploy.bat
+```
+
+`deploy.bat` builds Release, publishes the single-file exe, stops any running `EVE-F-Preview.exe` gracefully (so settings can save), copies **only** the exe to `C:\Eve\EVE-F-Preview.exe`, and starts it. It must never overwrite `C:\Eve\EVE-F-Preview.json`.
+
+Report success or errors. On success, mention:
+
+- Published: `C:\Users\cmatt\Documents\Code\farfnarkle\eve-f-preview\bin\net8.0-windows8.0\win-x64\publish\EVE-F-Preview.exe`
+- Deployed: `C:\Eve\EVE-F-Preview.exe`
