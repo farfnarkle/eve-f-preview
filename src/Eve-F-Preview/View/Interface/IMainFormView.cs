@@ -95,7 +95,7 @@ namespace EveFPreview.View
 		Action GlobalShortcutSettingsChanged { get; set; }
 		Action ThumbnailsSizeChanged { get; set; }
 		Action<string> ThumbnailStateChanged { get; set; }
-		Action DocumentationLinkActivated { get; set; }
+		Action<string> DocumentationLinkActivated { get; set; }
 		Action CloseAllEveClientsRequested { get; set; }
 		Action RefreshPortraitsRequested { get; set; }
 

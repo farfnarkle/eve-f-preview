@@ -40,6 +40,7 @@ namespace EveFPreview.View
 		private readonly ListBox _characterList;
 		private readonly CheckedListBox _channelList;
 		private readonly Label _channelLabel;
+		private readonly CheckBox _preserveModuleStateCheckBox;
 		private readonly Label _statusLabel;
 		private readonly Label _autoSyncProfileLabel;
 		private readonly List<SettingsSyncCharacterEntry> _characters = new List<SettingsSyncCharacterEntry>();
@@ -117,7 +118,7 @@ namespace EveFPreview.View
 			this._characterList = new ListBox
 			{
 				Location = new Point(9, 144),
-				Size = new Size(280, 70),
+				Size = new Size(280, 110),
 				IntegralHeight = false,
 				Margin = new Padding(4)
 			};
@@ -127,24 +128,35 @@ namespace EveFPreview.View
 			{
 				AutoSize = true,
 				Text = "Channels to keep on copy",
-				Location = new Point(9, 220),
+				Location = new Point(9, 260),
 				Margin = new Padding(4)
 			};
 
 			this._channelList = new CheckedListBox
 			{
-				Location = new Point(9, 240),
-				Size = new Size(280, 90),
+				Location = new Point(9, 280),
+				Size = new Size(280, 150),
 				IntegralHeight = false,
 				CheckOnClick = true,
 				Margin = new Padding(4)
 			};
 			this._channelList.ItemCheck += this.ChannelList_ItemCheck;
 
+			this._preserveModuleStateCheckBox = new CheckBox
+			{
+				AutoSize = false,
+				Text = "Keep each alt's own ship module layout",
+				Location = new Point(9, 434),
+				Size = new Size(280, 22),
+				Margin = new Padding(4),
+				Checked = true
+			};
+			this._preserveModuleStateCheckBox.CheckedChanged += this.PreserveModuleStateCheckBox_CheckedChanged;
+
 			this._refreshButton = new Button
 			{
 				Text = "Refresh list",
-				Location = new Point(9, 338),
+				Location = new Point(9, 460),
 				Size = new Size(135, 28),
 				Margin = new Padding(4),
 				UseVisualStyleBackColor = true
@@ -154,7 +166,7 @@ namespace EveFPreview.View
 			this._syncButton = new Button
 			{
 				Text = "Sync…",
-				Location = new Point(154, 338),
+				Location = new Point(154, 460),
 				Size = new Size(135, 28),
 				Margin = new Padding(4),
 				UseVisualStyleBackColor = true,
@@ -165,7 +177,7 @@ namespace EveFPreview.View
 			this._autoSyncProfileLabel = new Label
 			{
 				AutoSize = false,
-				Location = new Point(9, 374),
+				Location = new Point(9, 496),
 				Size = new Size(280, 48),
 				Margin = new Padding(4),
 				ForeColor = SystemColors.ControlText
@@ -174,7 +186,7 @@ namespace EveFPreview.View
 			this._statusLabel = new Label
 			{
 				AutoSize = false,
-				Location = new Point(9, 426),
+				Location = new Point(9, 448),
 				Size = new Size(280, 60),
 				Margin = new Padding(4),
 				ForeColor = SystemColors.GrayText
@@ -189,10 +201,10 @@ namespace EveFPreview.View
 			panel.Controls.Add(this._characterList);
 			panel.Controls.Add(this._channelLabel);
 			panel.Controls.Add(this._channelList);
+			panel.Controls.Add(this._preserveModuleStateCheckBox);
 			panel.Controls.Add(this._refreshButton);
 			panel.Controls.Add(this._syncButton);
 			panel.Controls.Add(this._autoSyncProfileLabel);
-			panel.Controls.Add(this._statusLabel);
 			this.Controls.Add(panel);
 
 			this.ResumeLayout(false);
@@ -201,8 +213,30 @@ namespace EveFPreview.View
 		public void SetConfiguration(IThumbnailConfiguration configuration)
 		{
 			this._configuration = configuration;
+
+			this._suppressPersist = true;
+			try
+			{
+				this._preserveModuleStateCheckBox.Checked = configuration?.PreserveShipModuleStateOnSync ?? true;
+			}
+			finally
+			{
+				this._suppressPersist = false;
+			}
+
 			this.RefreshLists();
 			this.UpdateAutoSyncProfileLabel();
+		}
+
+		private void PreserveModuleStateCheckBox_CheckedChanged(object sender, EventArgs e)
+		{
+			if (this._suppressPersist || this._configuration == null)
+			{
+				return;
+			}
+
+			this._configuration.PreserveShipModuleStateOnSync = this._preserveModuleStateCheckBox.Checked;
+			this.PersistConfiguration?.Invoke();
 		}
 
 		private string SelectedProfileName => this._profileCombo.SelectedItem as string;
@@ -764,6 +798,7 @@ namespace EveFPreview.View
 					DestinationUserIds = selectedDestinations.Where(d => d.AccountId > 0).Select(d => d.AccountId).Distinct().ToList(),
 					ChannelKeysToStrip = channelsToStrip,
 					ProfileName = profile,
+					PreserveModuleState = this._preserveModuleStateCheckBox.Checked,
 					Mode = EveSettingsSyncMode.Copy
 				};
 

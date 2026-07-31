@@ -42,6 +42,13 @@ namespace EveFPreview.Services
 		public IList<long> DestinationUserIds { get; set; } = new List<long>();
 		/// <summary>Channel keys (e.g. player_…) to remove from copied core_char files. Builtins are never removed.</summary>
 		public IList<string> ChannelKeysToStrip { get; set; } = new List<string>();
+
+		/// <summary>
+		/// Keep the destination's own ship module layout (core_user ui.slotOrder) and per-module
+		/// state (core_char auto-repeat / auto-reload) instead of overwriting them with the source's,
+		/// whose ship and module itemIDs belong to the source's own ships. Copy mode only.
+		/// </summary>
+		public bool PreserveModuleState { get; set; } = true;
 		public EveSettingsSyncMode Mode { get; set; } = EveSettingsSyncMode.Copy;
 		public bool DryRun { get; set; }
 
@@ -302,6 +309,11 @@ namespace EveFPreview.Services
 				return report;
 			}
 
+			if (_options.Mode == EveSettingsSyncMode.Symlink && _options.PreserveModuleState)
+			{
+				report.Warnings.Add("Symlinked characters share one settings file, so ship module layout and auto-repeat / auto-reload cannot be kept separately.");
+			}
+
 			foreach (string profileDir in EnumerateProfileDirs(_options.EveDataRoot, _options.ServerFolderPattern))
 			{
 				if (!string.IsNullOrEmpty(_options.ProfileName)
@@ -374,9 +386,12 @@ namespace EveFPreview.Services
 						{
 							byte[] blob = EveChatChannelTools.PrepareCoreCharCopy(
 								source,
+								target,
 								_options.ChannelKeysToStrip,
+								_options.PreserveModuleState,
 								out IList<string> removed,
-								out IList<string> sanitized);
+								out IList<string> sanitized,
+								out IList<string> preserved);
 							File.WriteAllBytes(target, blob);
 							if (removed.Count > 0)
 							{
@@ -387,20 +402,38 @@ namespace EveFPreview.Services
 							{
 								report.Actions.Add("  cleared: " + string.Join(", ", sanitized));
 							}
+
+							if (preserved.Count > 0)
+							{
+								report.Actions.Add("  kept module state: " + string.Join(", ", preserved));
+							}
 						});
 					}
-				else if (!string.IsNullOrWhiteSpace(_options.SourceCharacterName))
+				else if (!string.IsNullOrWhiteSpace(_options.SourceCharacterName) || _options.PreserveModuleState)
 				{
+					if (string.IsNullOrWhiteSpace(_options.SourceCharacterName))
+					{
+						report.Warnings.Add("Source character name unknown; edit history in " + Path.GetFileName(source) + " not sanitized.");
+					}
+
 					Do(report, "copy+sanitize " + Path.GetFileName(source) + " -> " + name, () =>
 					{
 						byte[] blob = EveChatChannelTools.PrepareCoreUserCopy(
 							source,
+							target,
 							_options.SourceCharacterName,
-							out IList<string> sanitized);
+							_options.PreserveModuleState,
+							out IList<string> sanitized,
+							out IList<string> preserved);
 						File.WriteAllBytes(target, blob);
 						if (sanitized.Count > 0)
 						{
 							report.Actions.Add("  cleared: " + string.Join(", ", sanitized));
+						}
+
+						if (preserved.Count > 0)
+						{
+							report.Actions.Add("  kept ship HUD state: " + string.Join(", ", preserved));
 						}
 					});
 				}

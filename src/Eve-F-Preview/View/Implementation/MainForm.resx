@@ -197,14 +197,7 @@
     <value>False</value>
   </data>
   <data name="DescriptionLabel.Text" xml:space="preserve">
-    <value>An advanced task switcher for EVE Online clients.
-
-The program does NOT
-• modify EVE Online interface
-• display modified EVE Online interface
-• broadcast any keyboard or mouse events
-• interact with EVE Online except of;
-    - resizing or bringing it to the foreground</value>
+    <value>EVE-F-Preview is Farfnarkle's maintained fork of EVE-O Preview. It shows live thumbnails of your EVE Online clients for quick monitoring and switching.</value>
   </data>
   <data name="NameLabel.GenerateMember" type="System.Boolean, mscorlib">
     <value>False</value>

@@ -63,6 +63,8 @@ namespace EveFPreview.Configuration
 		List<string> AutoSettingsSyncChannelKeysToStrip { get; set; }
 		/// <summary>EVE settings profile folder name, e.g. settings_Farfnarkle.</summary>
 		string AutoSettingsSyncProfileName { get; set; }
+		/// <summary>Keep each destination's own per-module auto-repeat / auto-reload state when syncing core_char.</summary>
+		bool PreserveShipModuleStateOnSync { get; set; }
 
 		bool PreventPreviews { get; set; }
 		bool HideThumbnailsOnLostFocus { get; set; }

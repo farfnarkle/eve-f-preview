@@ -19,6 +19,21 @@ namespace EveFPreview.Services
 	{
 		private static readonly string[] BuiltinPrefixes = { "local", "corp", "alliance" };
 
+		/// <summary>
+		/// Top-level core_char sections keyed by module itemID rather than by type. The IDs only
+		/// exist for the modules fitted on one character's own ships, so copying these sections
+		/// from a source character replaces the destination's per-module state with IDs that match
+		/// nothing it owns.
+		/// </summary>
+		private static readonly string[] ModuleStateSections = { "autorepeat", "autoreload" };
+
+		/// <summary>
+		/// core_user "ui" sections keyed by ship itemID. slotOrder holds the HUD module arrangement
+		/// per ship, so copying it from the source account drops every entry for the destination's
+		/// own ships and their modules snap back to raw fitting order.
+		/// </summary>
+		private static readonly string[] ShipUiStateSections = { "slotOrder" };
+
 		public static bool IsBuiltinChannelKey(string key)
 		{
 			if (string.IsNullOrEmpty(key))
@@ -112,12 +127,158 @@ namespace EveFPreview.Services
 			out IList<string> removedNames,
 			out IList<string> sanitizedFields)
 		{
+			return PrepareCoreCharCopy(
+				sourcePath,
+				null,
+				keysToRemove,
+				false,
+				out removedNames,
+				out sanitizedFields,
+				out _);
+		}
+
+		/// <summary>
+		/// Decode source core_char, strip selected channels, clear identity-leaking UI
+		/// (e.g. contract owner filter with the source character name), optionally keep the
+		/// destination's own per-module state, then encode.
+		/// </summary>
+		public static byte[] PrepareCoreCharCopy(
+			string sourcePath,
+			string targetPath,
+			IEnumerable<string> keysToRemove,
+			bool preserveModuleState,
+			out IList<string> removedNames,
+			out IList<string> sanitizedFields,
+			out IList<string> preservedSections)
+		{
 			object root = EveBlueMarshal.Load(sourcePath);
 			removedNames = StripChannels(root, keysToRemove);
 			sanitizedFields = SanitizeIdentityUi(root);
+			preservedSections = preserveModuleState
+				? PreserveModuleState(root, targetPath)
+				: new List<string>();
 			byte[] blob = EveBlueMarshal.Dumps(root);
 			EveBlueMarshal.Loads(blob);
 			return blob;
+		}
+
+		/// <summary>
+		/// Replaces the source's module-instance sections with the destination's existing ones so a
+		/// sync does not reset per-module auto-repeat / auto-reload on the destination's ships.
+		/// Sections absent from the destination are dropped instead of inherited. Returns the
+		/// section names that were carried over.
+		/// </summary>
+		public static IList<string> PreserveModuleState(object root, string targetPath)
+		{
+			if (!(root is Dictionary<object, object> top) || !TryLoadTopDict(targetPath, out Dictionary<object, object> targetTop))
+			{
+				return new List<string>();
+			}
+
+			return PreserveSections(top, targetTop, ModuleStateSections, string.Empty);
+		}
+
+		/// <summary>
+		/// Replaces the source's per-ship HUD sections under core_user "ui" with the destination's
+		/// own, so a sync does not reset the module layout on the destination's ships. Returns the
+		/// section names that were carried over.
+		/// </summary>
+		public static IList<string> PreserveShipUiState(object root, string targetPath)
+		{
+			if (!(root is Dictionary<object, object> top)
+				|| !TryGetDictValue(top, "ui", out object sourceUiObj)
+				|| !(sourceUiObj is Dictionary<object, object> sourceUi)
+				|| !TryLoadTopDict(targetPath, out Dictionary<object, object> targetTop)
+				|| !TryGetDictValue(targetTop, "ui", out object targetUiObj)
+				|| !(targetUiObj is Dictionary<object, object> targetUi))
+			{
+				return new List<string>();
+			}
+
+			return PreserveSections(sourceUi, targetUi, ShipUiStateSections, "ui.");
+		}
+
+		/// <summary>
+		/// For each named section, swaps the source's value for the destination's. Sections absent
+		/// from the destination are dropped rather than inherited, because their itemID keys refer
+		/// to items the destination does not own.
+		/// </summary>
+		private static IList<string> PreserveSections(
+			Dictionary<object, object> source,
+			Dictionary<object, object> target,
+			IEnumerable<string> sections,
+			string label)
+		{
+			var preserved = new List<string>();
+
+			foreach (string section in sections)
+			{
+				bool targetHas = TryGetDictValue(target, section, out object targetValue);
+				bool sourceHas = TryGetDictValue(source, section, out _);
+
+				if (targetHas)
+				{
+					SetDictValue(source, section, targetValue);
+				}
+				else if (sourceHas)
+				{
+					RemoveDictKey(source, section);
+				}
+				else
+				{
+					continue;
+				}
+
+				preserved.Add(label + section + " (" + DescribeEntryCount(targetHas ? targetValue : null) + ")");
+			}
+
+			return preserved;
+		}
+
+		private static bool TryLoadTopDict(string path, out Dictionary<object, object> top)
+		{
+			top = null;
+			if (string.IsNullOrEmpty(path) || !File.Exists(path))
+			{
+				return false;
+			}
+
+			try
+			{
+				top = EveBlueMarshal.Load(path) as Dictionary<object, object>;
+			}
+			catch
+			{
+				// Unreadable destination: leave the source sections alone rather than blanking them.
+				return false;
+			}
+
+			return top != null;
+		}
+
+		/// <summary>
+		/// Cosmetic helper for the sync report only. Must never throw: the shapes handed to it are
+		/// whatever the destination file happens to contain (bare dict, (timestamp, dict) envelope,
+		/// list, or null), and a bad guess must not abort the copy.
+		/// </summary>
+		private static string DescribeEntryCount(object value)
+		{
+			if (value == null)
+			{
+				return "none";
+			}
+
+			if (TryUnwrapTimedDict(value, out _, out Dictionary<object, object> dict))
+			{
+				return dict.Count + " entries";
+			}
+
+			if (TryAsSequence(value, out object[] items))
+			{
+				return items.Length + " entries";
+			}
+
+			return "none";
 		}
 
 		/// <summary>
@@ -154,8 +315,26 @@ namespace EveFPreview.Services
 			string sourceCharacterName,
 			out IList<string> sanitizedFields)
 		{
+			return PrepareCoreUserCopy(sourcePath, null, sourceCharacterName, false, out sanitizedFields, out _);
+		}
+
+		/// <summary>
+		/// Decode source core_user, scrub identity-leaking history, optionally keep the destination
+		/// account's own per-ship HUD state (module slot order), then encode.
+		/// </summary>
+		public static byte[] PrepareCoreUserCopy(
+			string sourcePath,
+			string targetPath,
+			string sourceCharacterName,
+			bool preserveShipUiState,
+			out IList<string> sanitizedFields,
+			out IList<string> preservedSections)
+		{
 			object root = EveBlueMarshal.Load(sourcePath);
 			sanitizedFields = SanitizeCoreUserEditHistory(root, sourceCharacterName);
+			preservedSections = preserveShipUiState
+				? PreserveShipUiState(root, targetPath)
+				: new List<string>();
 			byte[] blob = EveBlueMarshal.Dumps(root);
 			EveBlueMarshal.Loads(blob);
 			return blob;
@@ -240,7 +419,7 @@ namespace EveFPreview.Services
 			}
 
 			// Some controls store history as (timestamp, [entries...]).
-			object[] pair = AsSequence(value);
+			TryAsSequence(value, out object[] pair);
 			if (pair.Length == 2 && (pair[1] is List<object> || pair[1] is object[]))
 			{
 				object scrubbedInner = ScrubHistoryEntry(pair[1], needle, out changed);
@@ -331,6 +510,8 @@ namespace EveFPreview.Services
 					return Array.Empty<object>();
 				case List<object> _:
 					return new List<object>();
+				case Dictionary<object, object> _:
+					return new Dictionary<object, object>();
 				case string _:
 					return string.Empty;
 				default:
@@ -412,7 +593,7 @@ namespace EveFPreview.Services
 			dict = null;
 
 			// Common CCP shape: (timestamp, { ... })
-			object[] pair = AsSequence(value);
+			TryAsSequence(value, out object[] pair);
 			if (pair.Length >= 2 && pair[1] is Dictionary<object, object> nested)
 			{
 				timestamp = pair[0];
@@ -536,24 +717,42 @@ namespace EveFPreview.Services
 			return true;
 		}
 
+		/// <summary>
+		/// Sequence coercion for chat-channel parsing, where a non-sequence means the file is not
+		/// in the shape we understand and continuing would silently corrupt it.
+		/// </summary>
 		private static object[] AsSequence(object o)
 		{
-			if (o is object[] arr)
+			if (!TryAsSequence(o, out object[] parts))
 			{
-				return arr;
+				throw new InvalidDataException("expected sequence for channel data, got " + o.GetType().Name);
 			}
 
-			if (o is List<object> list)
-			{
-				return list.ToArray();
-			}
+			return parts;
+		}
 
-			if (o == null)
+		/// <summary>
+		/// Non-throwing sequence coercion. Returns false (with an empty array) for anything that is
+		/// not a tuple/list, so callers handling arbitrary settings shapes can fall through instead
+		/// of aborting.
+		/// </summary>
+		private static bool TryAsSequence(object o, out object[] parts)
+		{
+			switch (o)
 			{
-				return Array.Empty<object>();
+				case object[] arr:
+					parts = arr;
+					return true;
+				case List<object> list:
+					parts = list.ToArray();
+					return true;
+				case null:
+					parts = Array.Empty<object>();
+					return true;
+				default:
+					parts = Array.Empty<object>();
+					return false;
 			}
-
-			throw new InvalidDataException("expected sequence for channel data, got " + o.GetType().Name);
 		}
 	}
 }

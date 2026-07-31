@@ -1,9 +1,9 @@
 # Builds the Windows release zip and creates a GitHub release (requires: gh auth login).
 # Usage: .\create-release.ps1
-# Optional: .\create-release.ps1 -Tag v1.0.0 -TargetBranch main
+# Optional: .\create-release.ps1 -Tag v1.0.1 -TargetBranch main
 
 param(
-    [string]$Tag = "v1.0.0",
+    [string]$Tag = "v1.0.1",
     [string]$TargetBranch = "main"
 )
 

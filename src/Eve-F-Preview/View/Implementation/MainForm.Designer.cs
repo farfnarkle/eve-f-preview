@@ -322,7 +322,7 @@ namespace EveFPreview.View
 			// HideCaptionOnClientsCheckBox
 			// 
 			HideCaptionOnClientsCheckBox.AutoSize = true;
-			HideCaptionOnClientsCheckBox.Location = new Point(9, 121);
+			HideCaptionOnClientsCheckBox.Location = new Point(9, 94);
 			HideCaptionOnClientsCheckBox.Margin = new Padding(4);
 			HideCaptionOnClientsCheckBox.Name = "HideCaptionOnClientsCheckBox";
 			HideCaptionOnClientsCheckBox.Size = new Size(168, 19);
@@ -334,7 +334,7 @@ namespace EveFPreview.View
 			// label4
 			// 
 			label4.AutoSize = true;
-			label4.Location = new Point(6, 96);
+			label4.Location = new Point(9, 279);
 			label4.Margin = new Padding(4, 0, 4, 0);
 			label4.Name = "label4";
 			label4.Size = new Size(91, 15);
@@ -345,7 +345,7 @@ namespace EveFPreview.View
 			// 
 			AnimationStyleCombo.DropDownStyle = ComboBoxStyle.DropDownList;
 			AnimationStyleCombo.FormattingEnabled = true;
-			AnimationStyleCombo.Location = new Point(105, 93);
+			AnimationStyleCombo.Location = new Point(105, 276);
 			AnimationStyleCombo.Margin = new Padding(4);
 			AnimationStyleCombo.Name = "AnimationStyleCombo";
 			AnimationStyleCombo.Size = new Size(177, 23);
@@ -355,7 +355,7 @@ namespace EveFPreview.View
 			// MinimizeInactiveClientsCheckBox
 			// 
 			MinimizeInactiveClientsCheckBox.AutoSize = true;
-			MinimizeInactiveClientsCheckBox.Location = new Point(9, 73);
+			MinimizeInactiveClientsCheckBox.Location = new Point(9, 252);
 			MinimizeInactiveClientsCheckBox.Margin = new Padding(4);
 			MinimizeInactiveClientsCheckBox.Name = "MinimizeInactiveClientsCheckBox";
 			MinimizeInactiveClientsCheckBox.Size = new Size(178, 19);
@@ -367,7 +367,7 @@ namespace EveFPreview.View
 			// EnableClientLayoutTrackingCheckBox
 			// 
 			EnableClientLayoutTrackingCheckBox.AutoSize = true;
-			EnableClientLayoutTrackingCheckBox.Location = new Point(9, 30);
+			EnableClientLayoutTrackingCheckBox.Location = new Point(9, 52);
 			EnableClientLayoutTrackingCheckBox.Margin = new Padding(4);
 			EnableClientLayoutTrackingCheckBox.Name = "EnableClientLayoutTrackingCheckBox";
 			EnableClientLayoutTrackingCheckBox.Size = new Size(137, 19);
@@ -381,7 +381,7 @@ namespace EveFPreview.View
 			HideActiveClientThumbnailCheckBox.AutoSize = true;
 			HideActiveClientThumbnailCheckBox.Checked = true;
 			HideActiveClientThumbnailCheckBox.CheckState = CheckState.Checked;
-			HideActiveClientThumbnailCheckBox.Location = new Point(9, 52);
+			HideActiveClientThumbnailCheckBox.Location = new Point(9, 73);
 			HideActiveClientThumbnailCheckBox.Margin = new Padding(4);
 			HideActiveClientThumbnailCheckBox.Name = "HideActiveClientThumbnailCheckBox";
 			HideActiveClientThumbnailCheckBox.Size = new Size(197, 19);
@@ -395,7 +395,7 @@ namespace EveFPreview.View
 			ShowThumbnailsAlwaysOnTopCheckBox.AutoSize = true;
 			ShowThumbnailsAlwaysOnTopCheckBox.Checked = true;
 			ShowThumbnailsAlwaysOnTopCheckBox.CheckState = CheckState.Checked;
-			ShowThumbnailsAlwaysOnTopCheckBox.Location = new Point(9, 142);
+			ShowThumbnailsAlwaysOnTopCheckBox.Location = new Point(9, 115);
 			ShowThumbnailsAlwaysOnTopCheckBox.Margin = new Padding(4);
 			ShowThumbnailsAlwaysOnTopCheckBox.Name = "ShowThumbnailsAlwaysOnTopCheckBox";
 			ShowThumbnailsAlwaysOnTopCheckBox.RightToLeft = RightToLeft.No;
@@ -410,7 +410,7 @@ namespace EveFPreview.View
 			HideThumbnailsOnLostFocusCheckBox.AutoSize = true;
 			HideThumbnailsOnLostFocusCheckBox.Checked = true;
 			HideThumbnailsOnLostFocusCheckBox.CheckState = CheckState.Checked;
-			HideThumbnailsOnLostFocusCheckBox.Location = new Point(9, 163);
+			HideThumbnailsOnLostFocusCheckBox.Location = new Point(9, 136);
 			HideThumbnailsOnLostFocusCheckBox.Margin = new Padding(4);
 			HideThumbnailsOnLostFocusCheckBox.Name = "HideThumbnailsOnLostFocusCheckBox";
 			HideThumbnailsOnLostFocusCheckBox.Size = new Size(252, 19);
@@ -424,7 +424,7 @@ namespace EveFPreview.View
 			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.AutoSize = true;
 			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.Checked = true;
 			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.CheckState = CheckState.Checked;
-			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.Location = new Point(9, 184);
+			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.Location = new Point(9, 157);
 			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.Margin = new Padding(4);
 			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.Name = "OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox";
 			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.Size = new Size(262, 19);
@@ -436,7 +436,7 @@ namespace EveFPreview.View
 			// DynamicCycleGroupCheckBox
 			// 
 			DynamicCycleGroupCheckBox.AutoSize = true;
-			DynamicCycleGroupCheckBox.Location = new Point(9, 205);
+			DynamicCycleGroupCheckBox.Location = new Point(9, 178);
 			DynamicCycleGroupCheckBox.Margin = new Padding(4);
 			DynamicCycleGroupCheckBox.Name = "DynamicCycleGroupCheckBox";
 			DynamicCycleGroupCheckBox.Size = new Size(140, 19);
@@ -448,7 +448,7 @@ namespace EveFPreview.View
 			// EnableAccountBasedThumbnailPositioningCheckBox
 			// 
 			EnableAccountBasedThumbnailPositioningCheckBox.AutoSize = true;
-			EnableAccountBasedThumbnailPositioningCheckBox.Location = new Point(9, 226);
+			EnableAccountBasedThumbnailPositioningCheckBox.Location = new Point(9, 199);
 			EnableAccountBasedThumbnailPositioningCheckBox.Margin = new Padding(4);
 			EnableAccountBasedThumbnailPositioningCheckBox.Name = "EnableAccountBasedThumbnailPositioningCheckBox";
 			EnableAccountBasedThumbnailPositioningCheckBox.Size = new Size(220, 19);
@@ -462,7 +462,7 @@ namespace EveFPreview.View
 			EnablePerClientThumbnailsLayoutsCheckBox.AutoSize = true;
 			EnablePerClientThumbnailsLayoutsCheckBox.Checked = true;
 			EnablePerClientThumbnailsLayoutsCheckBox.CheckState = CheckState.Checked;
-			EnablePerClientThumbnailsLayoutsCheckBox.Location = new Point(9, 247);
+			EnablePerClientThumbnailsLayoutsCheckBox.Location = new Point(9, 220);
 			EnablePerClientThumbnailsLayoutsCheckBox.Margin = new Padding(4);
 			EnablePerClientThumbnailsLayoutsCheckBox.Name = "EnablePerClientThumbnailsLayoutsCheckBox";
 			EnablePerClientThumbnailsLayoutsCheckBox.Size = new Size(200, 19);
@@ -474,7 +474,7 @@ namespace EveFPreview.View
 			// EnableAutoSettingsSyncCheckBox
 			// 
 			EnableAutoSettingsSyncCheckBox.AutoSize = true;
-			EnableAutoSettingsSyncCheckBox.Location = new Point(9, 268);
+			EnableAutoSettingsSyncCheckBox.Location = new Point(9, 313);
 			EnableAutoSettingsSyncCheckBox.Margin = new Padding(4);
 			EnableAutoSettingsSyncCheckBox.Name = "EnableAutoSettingsSyncCheckBox";
 			EnableAutoSettingsSyncCheckBox.Size = new Size(210, 19);
@@ -486,7 +486,7 @@ namespace EveFPreview.View
 			// AutoSettingsSyncStatusLabel
 			// 
 			AutoSettingsSyncStatusLabel.AutoEllipsis = true;
-			AutoSettingsSyncStatusLabel.Location = new Point(9, 288);
+			AutoSettingsSyncStatusLabel.Location = new Point(9, 335);
 			AutoSettingsSyncStatusLabel.Margin = new Padding(4, 0, 4, 0);
 			AutoSettingsSyncStatusLabel.Name = "AutoSettingsSyncStatusLabel";
 			AutoSettingsSyncStatusLabel.Size = new Size(300, 15);
@@ -508,7 +508,7 @@ namespace EveFPreview.View
 			// StartMinimizedCheckBox
 			// 
 			StartMinimizedCheckBox.AutoSize = true;
-			StartMinimizedCheckBox.Location = new Point(180, 8);
+			StartMinimizedCheckBox.Location = new Point(9, 30);
 			StartMinimizedCheckBox.Margin = new Padding(4);
 			StartMinimizedCheckBox.Name = "StartMinimizedCheckBox";
 			StartMinimizedCheckBox.Size = new Size(110, 19);
@@ -519,10 +519,10 @@ namespace EveFPreview.View
 			// 
 			// CloseAllEveClientsButton
 			// 
-			CloseAllEveClientsButton.Location = new Point(9, 308);
+			CloseAllEveClientsButton.Location = new Point(9, 556);
 			CloseAllEveClientsButton.Margin = new Padding(4);
 			CloseAllEveClientsButton.Name = "CloseAllEveClientsButton";
-			CloseAllEveClientsButton.Size = new Size(280, 22);
+			CloseAllEveClientsButton.Size = new Size(299, 28);
 			CloseAllEveClientsButton.TabIndex = 29;
 			CloseAllEveClientsButton.Text = "Close all EVE clients";
 			CloseAllEveClientsButton.UseVisualStyleBackColor = true;
@@ -1204,7 +1204,7 @@ namespace EveFPreview.View
 			// label5
 			// 
 			label5.AutoSize = true;
-			label5.Location = new Point(121, 31);
+			label5.Location = new Point(9, 358);
 			label5.Margin = new Padding(4, 0, 4, 0);
 			label5.Name = "label5";
 			label5.Size = new Size(168, 15);
@@ -1223,10 +1223,10 @@ namespace EveFPreview.View
 			panel2.Controls.Add(CycleGroupIndicatorSRadioButton);
 			panel2.Controls.Add(CycleGroupIndicatorERadioButton);
 			panel2.Controls.Add(CycleGroupIndicatorSWRadioButton);
-			panel2.Location = new Point(214, 50);
+			panel2.Location = new Point(9, 378);
 			panel2.Margin = new Padding(4);
 			panel2.Name = "panel2";
-			panel2.Size = new Size(73, 66);
+			panel2.Size = new Size(90, 84);
 			panel2.TabIndex = 46;
 			// 
 			// CycleGroupIndicatorNWRadioButton
@@ -1244,7 +1244,7 @@ namespace EveFPreview.View
 			// CycleGroupIndicatorNRadioButton
 			// 
 			CycleGroupIndicatorNRadioButton.AutoSize = true;
-			CycleGroupIndicatorNRadioButton.Location = new Point(27, 4);
+			CycleGroupIndicatorNRadioButton.Location = new Point(36, 4);
 			CycleGroupIndicatorNRadioButton.Margin = new Padding(4);
 			CycleGroupIndicatorNRadioButton.Name = "CycleGroupIndicatorNRadioButton";
 			CycleGroupIndicatorNRadioButton.Size = new Size(14, 13);
@@ -1256,7 +1256,7 @@ namespace EveFPreview.View
 			// CycleGroupIndicatorNERadioButton
 			// 
 			CycleGroupIndicatorNERadioButton.AutoSize = true;
-			CycleGroupIndicatorNERadioButton.Location = new Point(50, 4);
+			CycleGroupIndicatorNERadioButton.Location = new Point(69, 4);
 			CycleGroupIndicatorNERadioButton.Margin = new Padding(4);
 			CycleGroupIndicatorNERadioButton.Name = "CycleGroupIndicatorNERadioButton";
 			CycleGroupIndicatorNERadioButton.Size = new Size(14, 13);
@@ -1268,7 +1268,7 @@ namespace EveFPreview.View
 			// CycleGroupIndicatorWRadioButton
 			// 
 			CycleGroupIndicatorWRadioButton.AutoSize = true;
-			CycleGroupIndicatorWRadioButton.Location = new Point(4, 25);
+			CycleGroupIndicatorWRadioButton.Location = new Point(4, 34);
 			CycleGroupIndicatorWRadioButton.Margin = new Padding(4);
 			CycleGroupIndicatorWRadioButton.Name = "CycleGroupIndicatorWRadioButton";
 			CycleGroupIndicatorWRadioButton.Size = new Size(14, 13);
@@ -1280,7 +1280,7 @@ namespace EveFPreview.View
 			// CycleGroupIndicatorSERadioButton
 			// 
 			CycleGroupIndicatorSERadioButton.AutoSize = true;
-			CycleGroupIndicatorSERadioButton.Location = new Point(50, 46);
+			CycleGroupIndicatorSERadioButton.Location = new Point(69, 64);
 			CycleGroupIndicatorSERadioButton.Margin = new Padding(4);
 			CycleGroupIndicatorSERadioButton.Name = "CycleGroupIndicatorSERadioButton";
 			CycleGroupIndicatorSERadioButton.Size = new Size(14, 13);
@@ -1292,7 +1292,7 @@ namespace EveFPreview.View
 			// CycleGroupIndicatorCRadioButton
 			// 
 			CycleGroupIndicatorCRadioButton.AutoSize = true;
-			CycleGroupIndicatorCRadioButton.Location = new Point(27, 25);
+			CycleGroupIndicatorCRadioButton.Location = new Point(36, 34);
 			CycleGroupIndicatorCRadioButton.Margin = new Padding(4);
 			CycleGroupIndicatorCRadioButton.Name = "CycleGroupIndicatorCRadioButton";
 			CycleGroupIndicatorCRadioButton.Size = new Size(14, 13);
@@ -1304,7 +1304,7 @@ namespace EveFPreview.View
 			// CycleGroupIndicatorSRadioButton
 			// 
 			CycleGroupIndicatorSRadioButton.AutoSize = true;
-			CycleGroupIndicatorSRadioButton.Location = new Point(27, 46);
+			CycleGroupIndicatorSRadioButton.Location = new Point(36, 64);
 			CycleGroupIndicatorSRadioButton.Margin = new Padding(4);
 			CycleGroupIndicatorSRadioButton.Name = "CycleGroupIndicatorSRadioButton";
 			CycleGroupIndicatorSRadioButton.Size = new Size(14, 13);
@@ -1316,7 +1316,7 @@ namespace EveFPreview.View
 			// CycleGroupIndicatorERadioButton
 			// 
 			CycleGroupIndicatorERadioButton.AutoSize = true;
-			CycleGroupIndicatorERadioButton.Location = new Point(50, 25);
+			CycleGroupIndicatorERadioButton.Location = new Point(69, 34);
 			CycleGroupIndicatorERadioButton.Margin = new Padding(4);
 			CycleGroupIndicatorERadioButton.Name = "CycleGroupIndicatorERadioButton";
 			CycleGroupIndicatorERadioButton.Size = new Size(14, 13);
@@ -1328,7 +1328,7 @@ namespace EveFPreview.View
 			// CycleGroupIndicatorSWRadioButton
 			// 
 			CycleGroupIndicatorSWRadioButton.AutoSize = true;
-			CycleGroupIndicatorSWRadioButton.Location = new Point(4, 46);
+			CycleGroupIndicatorSWRadioButton.Location = new Point(4, 64);
 			CycleGroupIndicatorSWRadioButton.Margin = new Padding(4);
 			CycleGroupIndicatorSWRadioButton.Name = "CycleGroupIndicatorSWRadioButton";
 			CycleGroupIndicatorSWRadioButton.Size = new Size(14, 13);
@@ -1339,17 +1339,18 @@ namespace EveFPreview.View
 			// 
 			// LabelOverlayLabelFont
 			// 
-			LabelOverlayLabelFont.AutoSize = true;
-			LabelOverlayLabelFont.Location = new Point(9, 142);
+			LabelOverlayLabelFont.AutoEllipsis = true;
+			LabelOverlayLabelFont.Location = new Point(105, 158);
 			LabelOverlayLabelFont.Margin = new Padding(4, 0, 4, 0);
 			LabelOverlayLabelFont.Name = "LabelOverlayLabelFont";
-			LabelOverlayLabelFont.Size = new Size(47, 15);
+			LabelOverlayLabelFont.Size = new Size(190, 26);
 			LabelOverlayLabelFont.TabIndex = 45;
 			LabelOverlayLabelFont.Text = "Overlay";
+			LabelOverlayLabelFont.TextAlign = ContentAlignment.MiddleLeft;
 			// 
 			// btnLabelFont
 			// 
-			btnLabelFont.Location = new Point(6, 114);
+			btnLabelFont.Location = new Point(9, 158);
 			btnLabelFont.Margin = new Padding(2);
 			btnLabelFont.Name = "btnLabelFont";
 			btnLabelFont.Size = new Size(87, 26);
@@ -1361,17 +1362,17 @@ namespace EveFPreview.View
 			// label3
 			// 
 			label3.AutoSize = true;
-			label3.Location = new Point(236, 142);
+			label3.Location = new Point(9, 228);
 			label3.Margin = new Padding(4, 0, 4, 0);
 			label3.Name = "label3";
-			label3.Size = new Size(50, 15);
+			label3.Size = new Size(127, 15);
 			label3.TabIndex = 43;
-			label3.Text = "Position";
+			label3.Text = "Overlay Label Position";
 			// 
 			// label2
 			// 
 			label2.AutoSize = true;
-			label2.Location = new Point(6, 207);
+			label2.Location = new Point(9, 196);
 			label2.Margin = new Padding(4, 0, 4, 0);
 			label2.Name = "label2";
 			label2.Size = new Size(36, 15);
@@ -1381,7 +1382,7 @@ namespace EveFPreview.View
 			// OverlayLabelColorButton
 			// 
 			OverlayLabelColorButton.BorderStyle = BorderStyle.FixedSingle;
-			OverlayLabelColorButton.Location = new Point(49, 206);
+			OverlayLabelColorButton.Location = new Point(52, 195);
 			OverlayLabelColorButton.Margin = new Padding(4);
 			OverlayLabelColorButton.Name = "OverlayLabelColorButton";
 			OverlayLabelColorButton.Size = new Size(108, 19);
@@ -1400,10 +1401,10 @@ namespace EveFPreview.View
 			panel1.Controls.Add(OverlayLabelSRadioButton);
 			panel1.Controls.Add(OverlayLabelERadioButton);
 			panel1.Controls.Add(OverlayLabelSWRadioButton);
-			panel1.Location = new Point(216, 159);
+			panel1.Location = new Point(9, 248);
 			panel1.Margin = new Padding(4);
 			panel1.Name = "panel1";
-			panel1.Size = new Size(73, 66);
+			panel1.Size = new Size(90, 84);
 			panel1.TabIndex = 39;
 			// 
 			// OverlayLabelNWRadioButton
@@ -1421,7 +1422,7 @@ namespace EveFPreview.View
 			// OverlayLabelNRadioButton
 			// 
 			OverlayLabelNRadioButton.AutoSize = true;
-			OverlayLabelNRadioButton.Location = new Point(27, 4);
+			OverlayLabelNRadioButton.Location = new Point(36, 4);
 			OverlayLabelNRadioButton.Margin = new Padding(4);
 			OverlayLabelNRadioButton.Name = "OverlayLabelNRadioButton";
 			OverlayLabelNRadioButton.Size = new Size(14, 13);
@@ -1433,7 +1434,7 @@ namespace EveFPreview.View
 			// OverlayLabelNERadioButton
 			// 
 			OverlayLabelNERadioButton.AutoSize = true;
-			OverlayLabelNERadioButton.Location = new Point(50, 4);
+			OverlayLabelNERadioButton.Location = new Point(69, 4);
 			OverlayLabelNERadioButton.Margin = new Padding(4);
 			OverlayLabelNERadioButton.Name = "OverlayLabelNERadioButton";
 			OverlayLabelNERadioButton.Size = new Size(14, 13);
@@ -1445,7 +1446,7 @@ namespace EveFPreview.View
 			// OverlayLabelWRadioButton
 			// 
 			OverlayLabelWRadioButton.AutoSize = true;
-			OverlayLabelWRadioButton.Location = new Point(4, 25);
+			OverlayLabelWRadioButton.Location = new Point(4, 34);
 			OverlayLabelWRadioButton.Margin = new Padding(4);
 			OverlayLabelWRadioButton.Name = "OverlayLabelWRadioButton";
 			OverlayLabelWRadioButton.Size = new Size(14, 13);
@@ -1457,7 +1458,7 @@ namespace EveFPreview.View
 			// OverlayLabelSERadioButton
 			// 
 			OverlayLabelSERadioButton.AutoSize = true;
-			OverlayLabelSERadioButton.Location = new Point(50, 46);
+			OverlayLabelSERadioButton.Location = new Point(69, 64);
 			OverlayLabelSERadioButton.Margin = new Padding(4);
 			OverlayLabelSERadioButton.Name = "OverlayLabelSERadioButton";
 			OverlayLabelSERadioButton.Size = new Size(14, 13);
@@ -1469,7 +1470,7 @@ namespace EveFPreview.View
 			// OverlayLabelCRadioButton
 			// 
 			OverlayLabelCRadioButton.AutoSize = true;
-			OverlayLabelCRadioButton.Location = new Point(27, 25);
+			OverlayLabelCRadioButton.Location = new Point(36, 34);
 			OverlayLabelCRadioButton.Margin = new Padding(4);
 			OverlayLabelCRadioButton.Name = "OverlayLabelCRadioButton";
 			OverlayLabelCRadioButton.Size = new Size(14, 13);
@@ -1481,7 +1482,7 @@ namespace EveFPreview.View
 			// OverlayLabelSRadioButton
 			// 
 			OverlayLabelSRadioButton.AutoSize = true;
-			OverlayLabelSRadioButton.Location = new Point(27, 46);
+			OverlayLabelSRadioButton.Location = new Point(36, 64);
 			OverlayLabelSRadioButton.Margin = new Padding(4);
 			OverlayLabelSRadioButton.Name = "OverlayLabelSRadioButton";
 			OverlayLabelSRadioButton.Size = new Size(14, 13);
@@ -1493,7 +1494,7 @@ namespace EveFPreview.View
 			// OverlayLabelERadioButton
 			// 
 			OverlayLabelERadioButton.AutoSize = true;
-			OverlayLabelERadioButton.Location = new Point(50, 25);
+			OverlayLabelERadioButton.Location = new Point(69, 34);
 			OverlayLabelERadioButton.Margin = new Padding(4);
 			OverlayLabelERadioButton.Name = "OverlayLabelERadioButton";
 			OverlayLabelERadioButton.Size = new Size(14, 13);
@@ -1505,7 +1506,7 @@ namespace EveFPreview.View
 			// OverlayLabelSWRadioButton
 			// 
 			OverlayLabelSWRadioButton.AutoSize = true;
-			OverlayLabelSWRadioButton.Location = new Point(4, 46);
+			OverlayLabelSWRadioButton.Location = new Point(4, 64);
 			OverlayLabelSWRadioButton.Margin = new Padding(4);
 			OverlayLabelSWRadioButton.Name = "OverlayLabelSWRadioButton";
 			OverlayLabelSWRadioButton.Size = new Size(14, 13);
@@ -1517,7 +1518,7 @@ namespace EveFPreview.View
 			// HighlightColorLabel
 			// 
 			HighlightColorLabel.AutoSize = true;
-			HighlightColorLabel.Location = new Point(6, 90);
+			HighlightColorLabel.Location = new Point(9, 116);
 			HighlightColorLabel.Margin = new Padding(4, 0, 4, 0);
 			HighlightColorLabel.Name = "HighlightColorLabel";
 			HighlightColorLabel.Size = new Size(36, 15);
@@ -1527,7 +1528,7 @@ namespace EveFPreview.View
 			// ActiveClientHighlightColorButton
 			// 
 			ActiveClientHighlightColorButton.BorderStyle = BorderStyle.FixedSingle;
-			ActiveClientHighlightColorButton.Location = new Point(49, 89);
+			ActiveClientHighlightColorButton.Location = new Point(52, 115);
 			ActiveClientHighlightColorButton.Margin = new Padding(4);
 			ActiveClientHighlightColorButton.Name = "ActiveClientHighlightColorButton";
 			ActiveClientHighlightColorButton.Size = new Size(108, 19);
@@ -1539,7 +1540,7 @@ namespace EveFPreview.View
 			EnableActiveClientHighlightCheckBox.AutoSize = true;
 			EnableActiveClientHighlightCheckBox.Checked = true;
 			EnableActiveClientHighlightCheckBox.CheckState = CheckState.Checked;
-			EnableActiveClientHighlightCheckBox.Location = new Point(9, 64);
+			EnableActiveClientHighlightCheckBox.Location = new Point(9, 88);
 			EnableActiveClientHighlightCheckBox.Margin = new Padding(4);
 			EnableActiveClientHighlightCheckBox.Name = "EnableActiveClientHighlightCheckBox";
 			EnableActiveClientHighlightCheckBox.RightToLeft = RightToLeft.No;
@@ -1554,7 +1555,7 @@ namespace EveFPreview.View
 			ShowThumbnailOverlaysCheckBox.AutoSize = true;
 			ShowThumbnailOverlaysCheckBox.Checked = true;
 			ShowThumbnailOverlaysCheckBox.CheckState = CheckState.Checked;
-			ShowThumbnailOverlaysCheckBox.Location = new Point(9, 8);
+			ShowThumbnailOverlaysCheckBox.Location = new Point(9, 10);
 			ShowThumbnailOverlaysCheckBox.Margin = new Padding(4);
 			ShowThumbnailOverlaysCheckBox.Name = "ShowThumbnailOverlaysCheckBox";
 			ShowThumbnailOverlaysCheckBox.RightToLeft = RightToLeft.No;
@@ -1569,7 +1570,7 @@ namespace EveFPreview.View
 			ShowThumbnailFramesCheckBox.AutoSize = true;
 			ShowThumbnailFramesCheckBox.Checked = true;
 			ShowThumbnailFramesCheckBox.CheckState = CheckState.Checked;
-			ShowThumbnailFramesCheckBox.Location = new Point(9, 36);
+			ShowThumbnailFramesCheckBox.Location = new Point(9, 54);
 			ShowThumbnailFramesCheckBox.Margin = new Padding(4);
 			ShowThumbnailFramesCheckBox.Name = "ShowThumbnailFramesCheckBox";
 			ShowThumbnailFramesCheckBox.RightToLeft = RightToLeft.No;
@@ -1582,8 +1583,7 @@ namespace EveFPreview.View
 			// ShowSystemNameOnThumbnailCheckBox
 			// 
 			ShowSystemNameOnThumbnailCheckBox.AutoSize = true;
-			// Top right: the label font preview below grows with the selected font and would cover this
-			ShowSystemNameOnThumbnailCheckBox.Location = new Point(121, 6);
+			ShowSystemNameOnThumbnailCheckBox.Location = new Point(9, 32);
 			ShowSystemNameOnThumbnailCheckBox.Margin = new Padding(4);
 			ShowSystemNameOnThumbnailCheckBox.Name = "ShowSystemNameOnThumbnailCheckBox";
 			ShowSystemNameOnThumbnailCheckBox.RightToLeft = RightToLeft.No;
@@ -1701,34 +1701,33 @@ namespace EveFPreview.View
 			// 
 			// CreditMaintLabel
 			// 
-			CreditMaintLabel.AutoSize = true;
-			CreditMaintLabel.Location = new Point(0, 165);
+			CreditMaintLabel.Location = new Point(0, 128);
 			CreditMaintLabel.Margin = new Padding(4, 0, 4, 0);
 			CreditMaintLabel.Name = "CreditMaintLabel";
 			CreditMaintLabel.Padding = new Padding(9, 4, 9, 4);
-			CreditMaintLabel.Size = new Size(292, 23);
+			CreditMaintLabel.Size = new Size(310, 74);
 			CreditMaintLabel.TabIndex = 7;
-			CreditMaintLabel.Text = "Credit to previous maintainer: Phrynohyas Tig-Rah";
+			CreditMaintLabel.Text = "Based on EVE-O Preview by its original creators and maintainers, including Phrynohyas Tig-Rah, Devilen, Dal Shooth, Izakbar, Aura Asuna, Makari Aeron, and StinkRay.";
 			// 
 			// DocumentationLinkLabel
 			// 
 			DocumentationLinkLabel.AutoSize = true;
-			DocumentationLinkLabel.Location = new Point(0, 188);
+			DocumentationLinkLabel.Location = new Point(0, 210);
 			DocumentationLinkLabel.Margin = new Padding(4, 0, 4, 0);
 			DocumentationLinkLabel.Name = "DocumentationLinkLabel";
 			DocumentationLinkLabel.Padding = new Padding(9, 4, 9, 4);
-			DocumentationLinkLabel.Size = new Size(259, 23);
+			DocumentationLinkLabel.Size = new Size(37, 23);
 			DocumentationLinkLabel.TabIndex = 6;
-			DocumentationLinkLabel.Text = "For more information visit the forum thread:";
+			DocumentationLinkLabel.Text = "Links:";
 			// 
 			// DescriptionLabel
 			// 
 			DescriptionLabel.BackColor = Color.Transparent;
-			DescriptionLabel.Location = new Point(0, 34);
+			DescriptionLabel.Location = new Point(0, 40);
 			DescriptionLabel.Margin = new Padding(4, 0, 4, 0);
 			DescriptionLabel.Name = "DescriptionLabel";
 			DescriptionLabel.Padding = new Padding(9, 4, 9, 4);
-			DescriptionLabel.Size = new Size(304, 167);
+			DescriptionLabel.Size = new Size(310, 82);
 			DescriptionLabel.TabIndex = 5;
 			DescriptionLabel.Text = resources.GetString("DescriptionLabel.Text");
 			// 
@@ -1741,7 +1740,7 @@ namespace EveFPreview.View
 			VersionLabel.Name = "VersionLabel";
 			VersionLabel.Size = new Size(49, 20);
 			VersionLabel.TabIndex = 4;
-			VersionLabel.Text = "1.0.0";
+			VersionLabel.Text = "1.0.1";
 			// 
 			// NameLabel
 			// 
@@ -1756,14 +1755,14 @@ namespace EveFPreview.View
 			// 
 			// DocumentationLink
 			// 
-			DocumentationLink.Location = new Point(0, 204);
-			DocumentationLink.Margin = new Padding(35, 4, 4, 4);
+			DocumentationLink.Location = new Point(0, 233);
+			DocumentationLink.Margin = new Padding(4);
 			DocumentationLink.Name = "DocumentationLink";
 			DocumentationLink.Padding = new Padding(9, 4, 9, 4);
-			DocumentationLink.Size = new Size(306, 38);
+			DocumentationLink.Size = new Size(310, 75);
 			DocumentationLink.TabIndex = 2;
 			DocumentationLink.TabStop = true;
-			DocumentationLink.Text = "to be set from prresenter to be set from prresenter to be set from prresenter to be set from prresenter";
+			DocumentationLink.Text = "EVE-F-Preview on GitHub\nEVE-O Preview upstream\nOriginal forum thread";
 			DocumentationLink.LinkClicked += DocumentationLinkClicked_Handler;
 			// 
 			// NotifyIcon

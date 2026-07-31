@@ -15,7 +15,7 @@ namespace EveFPreview.Presenters
 	public class MainFormPresenter : Presenter<IMainFormView>, IMainFormPresenter
 	{
 		#region Private constants
-		private const string FORUM_URL = @"https://forums.eveonline.com/t/eve-o-preview-v8-0-2-0";
+		private const string FORUM_URL = @"https://forums.eveonline.com/t/eve-o-preview-v8-0-2-0/463600";
 		#endregion
 
 		#region Private fields
@@ -458,17 +458,22 @@ namespace EveFPreview.Presenters
 			this._suppressSizeNotifications = false;
 		}
 
-		private void OpenDocumentationLink()
+		private void OpenDocumentationLink(string url)
 		{
+			if (string.IsNullOrWhiteSpace(url))
+			{
+				url = MainFormPresenter.FORUM_URL;
+			}
+
 			// funtimes
 			// https://brockallen.com/2016/09/24/process-start-for-urls-on-net-core/
 			// https://github.com/dotnet/runtime/issues/17938
 
 			// TODO Move out to a separate service / presenter / message handler
 #if LINUX
-			Process.Start("xdg-open", new Uri(MainFormPresenter.FORUM_URL).AbsoluteUri);
+			Process.Start("xdg-open", new Uri(url).AbsoluteUri);
 #else
-			ProcessStartInfo processStartInfo = new ProcessStartInfo(new Uri(MainFormPresenter.FORUM_URL).AbsoluteUri);
+			ProcessStartInfo processStartInfo = new ProcessStartInfo(new Uri(url).AbsoluteUri);
 			processStartInfo.UseShellExecute = true;
 			Process.Start(processStartInfo);
 #endif

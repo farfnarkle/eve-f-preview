@@ -134,6 +134,7 @@ namespace EveFPreview.Configuration.Implementation
 			this.AutoSettingsSyncChannelKeysToKeep = new List<string>();
 			this.AutoSettingsSyncChannelKeysToStrip = new List<string>();
 			this.AutoSettingsSyncProfileName = string.Empty;
+			this.PreserveShipModuleStateOnSync = true;
 
 			this.HideThumbnailsOnLostFocus = false;
 			this.OnlyRegisterCycleHotkeysWhenEveFocused = true;
@@ -333,6 +334,9 @@ namespace EveFPreview.Configuration.Implementation
 
 		[JsonProperty("AutoSettingsSyncProfileName")]
 		public string AutoSettingsSyncProfileName { get; set; }
+
+		[JsonProperty("PreserveShipModuleStateOnSync")]
+		public bool PreserveShipModuleStateOnSync { get; set; }
 
 		public int HideThumbnailsDelay { get; set; }
 

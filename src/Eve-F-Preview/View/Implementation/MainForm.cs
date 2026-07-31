@@ -66,8 +66,8 @@ namespace EveFPreview.View
 
 			var panel = new Panel
 			{
-				Location = new Point(0, 336),
-				Size = new Size(300, 132),
+				Location = new Point(0, 363),
+				Size = new Size(300, 94),
 				Margin = new Padding(4)
 			};
 
@@ -835,7 +835,28 @@ namespace EveFPreview.View
 
 		public void SetDocumentationUrl(string url)
 		{
-			this.DocumentationLink.Text = url;
+			const string forkUrl = "https://github.com/farfnarkle/eve-f-preview";
+			const string upstreamUrl = "https://github.com/Proopai/eve-o-preview";
+			string forumUrl = string.IsNullOrWhiteSpace(url)
+				? "https://forums.eveonline.com/t/eve-o-preview-v8-0-2-0/463600"
+				: url;
+
+			string text =
+				"EVE-F-Preview on GitHub\n" +
+				"EVE-O Preview upstream\n" +
+				"Original forum thread";
+
+			this.DocumentationLink.Links.Clear();
+			this.DocumentationLink.Text = text;
+
+			int forkStart = text.IndexOf("EVE-F-Preview on GitHub", StringComparison.Ordinal);
+			this.DocumentationLink.Links.Add(forkStart, "EVE-F-Preview on GitHub".Length, forkUrl);
+
+			int upstreamStart = text.IndexOf("EVE-O Preview upstream", StringComparison.Ordinal);
+			this.DocumentationLink.Links.Add(upstreamStart, "EVE-O Preview upstream".Length, upstreamUrl);
+
+			int forumStart = text.IndexOf("Original forum thread", StringComparison.Ordinal);
+			this.DocumentationLink.Links.Add(forumStart, "Original forum thread".Length, forumUrl);
 		}
 
 		public void AddThumbnails(IList<IThumbnailDescription> thumbnails)
@@ -883,7 +904,7 @@ namespace EveFPreview.View
 
 		public Action<string> ThumbnailStateChanged { get; set; }
 
-		public Action DocumentationLinkActivated { get; set; }
+		public Action<string> DocumentationLinkActivated { get; set; }
 
 		public Action CloseAllEveClientsRequested { get; set; }
 		public Action RefreshPortraitsRequested { get; set; }
@@ -1080,7 +1101,11 @@ namespace EveFPreview.View
 
 		private void DocumentationLinkClicked_Handler(object sender, LinkLabelLinkClickedEventArgs e)
 		{
-			this.DocumentationLinkActivated?.Invoke();
+			string url = e.Link?.LinkData as string;
+			if (!string.IsNullOrWhiteSpace(url))
+			{
+				this.DocumentationLinkActivated?.Invoke(url);
+			}
 		}
 
 		private void MainFormResize_Handler(object sender, EventArgs e)

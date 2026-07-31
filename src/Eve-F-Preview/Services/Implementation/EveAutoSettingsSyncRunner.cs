@@ -208,6 +208,7 @@ namespace EveFPreview.Services
 				DestinationUserIds = (configuration.AutoSettingsSyncDestinationUserIds ?? new List<long>()).ToList(),
 				ChannelKeysToStrip = ResolveChannelKeysToStrip(configuration),
 				ProfileName = configuration.AutoSettingsSyncProfileName,
+				PreserveModuleState = configuration.PreserveShipModuleStateOnSync,
 				Mode = EveSettingsSyncMode.Copy
 			};
 
