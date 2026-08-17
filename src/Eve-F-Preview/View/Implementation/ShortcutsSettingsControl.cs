@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using EveFPreview.Configuration;
+using EveFPreview.UI.Hotkeys;
 
 namespace EveFPreview.View
 {
@@ -10,6 +11,13 @@ namespace EveFPreview.View
 	{
 		private const int WM_KEYDOWN = 0x100;
 		private const int WM_SYSKEYDOWN = 0x104;
+		private const int WM_MBUTTONDOWN = 0x0207;
+		private const int WM_XBUTTONDOWN = 0x020B;
+		private const int WM_XBUTTONDBLCLK = 0x020D;
+		private const int WM_NCXBUTTONDOWN = 0x00AB;
+		private const int WM_NCMBUTTONDOWN = 0x00A7;
+		private const int XBUTTON1 = 0x0001;
+		private const int XBUTTON2 = 0x0002;
 		private const string NoModifierChoice = "(none)";
 
 		// Click-through is a held-modifier action, not a hotkey, so it is picked from a list
@@ -216,7 +224,7 @@ namespace EveFPreview.View
 				AutoSize = true,
 				Dock = DockStyle.Fill,
 				Margin = new Padding(0, 8, 0, 0),
-				Text = "Click Set to record a hotkey. Click Clear to remove it. Per-client activation hotkeys are set on the Clients tab (Ctrl+click a character)."
+				Text = "Click Set to record a hotkey (keyboard, mouse 4/5 side buttons, or middle click). Click Clear to remove it. Per-client activation hotkeys are set on the Clients tab (Ctrl+click a character)."
 			};
 			this.AddFullWidthControl(note, SizeType.AutoSize);
 			this.SetDynamicCycleEnabled(false);
@@ -309,7 +317,7 @@ namespace EveFPreview.View
 			var setButton = this.CreateActionButton("Set");
 			setButton.Dock = DockStyle.Right;
 			setButton.Margin = new Padding(0);
-			this._toolTip.SetToolTip(setButton, "Set records a hotkey. Clear removes the current hotkey.");
+			this._toolTip.SetToolTip(setButton, "Set records a hotkey, including mouse side buttons. Clear removes the current hotkey.");
 
 			var fieldPanel = new Panel
 			{
@@ -491,6 +499,7 @@ namespace EveFPreview.View
 		{
 			if (this._captureFilter != null)
 			{
+				this._captureFilter.Stop();
 				Application.RemoveMessageFilter(this._captureFilter);
 				this._captureFilter = null;
 			}
@@ -541,15 +550,28 @@ namespace EveFPreview.View
 		{
 			private readonly Action<Keys> _onCaptured;
 			private readonly Action _onCancelled;
+			private readonly bool _mouseHookActive;
 
 			public HotkeyCaptureFilter(Action<Keys> onCaptured, Action onCancelled)
 			{
 				this._onCaptured = onCaptured;
 				this._onCancelled = onCancelled;
+				this._mouseHookActive = MouseButtonHotkeyMonitor.BeginCapture(onCaptured);
+			}
+
+			public void Stop()
+			{
+				MouseButtonHotkeyMonitor.EndCapture();
 			}
 
 			public bool PreFilterMessage(ref Message m)
 			{
+				if (!this._mouseHookActive && TryCaptureMouseButton(m, out Keys mouseKeys))
+				{
+					this._onCaptured(mouseKeys);
+					return true;
+				}
+
 				if (m.Msg != WM_KEYDOWN && m.Msg != WM_SYSKEYDOWN)
 				{
 					return false;
@@ -576,6 +598,36 @@ namespace EveFPreview.View
 				Keys keys = keyCode | Control.ModifierKeys;
 				this._onCaptured(keys);
 				return true;
+			}
+
+			private static bool TryCaptureMouseButton(Message m, out Keys keys)
+			{
+				keys = Keys.None;
+				if (m.Msg == WM_MBUTTONDOWN || m.Msg == WM_NCMBUTTONDOWN)
+				{
+					keys = Keys.MButton | Control.ModifierKeys;
+					return true;
+				}
+
+				if (m.Msg != WM_XBUTTONDOWN && m.Msg != WM_NCXBUTTONDOWN && m.Msg != WM_XBUTTONDBLCLK)
+				{
+					return false;
+				}
+
+				int xButton = (int)((m.WParam.ToInt64() >> 16) & 0xFFFF);
+				if (xButton == XBUTTON1)
+				{
+					keys = Keys.XButton1 | Control.ModifierKeys;
+					return true;
+				}
+
+				if (xButton == XBUTTON2)
+				{
+					keys = Keys.XButton2 | Control.ModifierKeys;
+					return true;
+				}
+
+				return false;
 			}
 
 			private static bool IsModifierKey(Keys keyCode)

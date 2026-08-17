@@ -550,9 +550,7 @@ namespace EveFPreview.Configuration.Implementation
 			string hotkey;
 			if (this.ClientHotkey.TryGetValue(currentClient, out hotkey))
 			{
-				// Protect from incorrect values
-				object rawValue = (new KeysConverter()).ConvertFromInvariantString(hotkey);
-				return rawValue != null ? (Keys)rawValue : Keys.None;
+				return HotkeyFormatting.FromDisplayString(hotkey);
 			}
 
 			return Keys.None;
@@ -560,13 +558,12 @@ namespace EveFPreview.Configuration.Implementation
 
 		public void SetClientHotkey(string currentClient, Keys hotkey)
 		{
-			this.ClientHotkey[currentClient] = (new KeysConverter()).ConvertToInvariantString(hotkey);
+			this.ClientHotkey[currentClient] = HotkeyFormatting.ToDisplayString(hotkey);
 		}
 
 		public Keys StringToKey(string hotkey)
 		{
-			object rawValue = (new KeysConverter()).ConvertFromInvariantString(hotkey);
-			return rawValue != null ? (Keys)rawValue : Keys.None;
+			return HotkeyFormatting.FromDisplayString(hotkey);
 		}
 
 		public bool IsPriorityClient(string currentClient)

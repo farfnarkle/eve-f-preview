@@ -400,9 +400,9 @@ namespace EveFPreview.Configuration.Implementation
 		}
 
 		/// <summary>
-		/// Converts AHK-style hotkey strings (e.g. "ctrl & 1", "^!F1", "^XButton1 & 1") into a
-		/// WinForms Keys value. Returns false (caller skips the hotkey) for anything with an
-		/// unsupported chord, such as mouse-button prefixes.
+		/// Converts AHK-style hotkey strings (e.g. "ctrl & 1", "^!F1", "XButton1") into a
+		/// WinForms Keys value. Mouse 4/5 and middle click are supported as the primary key.
+		/// Mouse+keyboard chords (e.g. "XButton1 & 1") are skipped.
 		/// </summary>
 		private static bool TryConvertAhkHotkey(string ahk, out Keys keys)
 		{
@@ -446,7 +446,7 @@ namespace EveFPreview.Configuration.Implementation
 						modifiers |= Keys.Shift;
 						break;
 					default:
-						// Unrecognized chord segment (e.g. a mouse button like XButton1) - not supported.
+						// Unrecognized chord segment (e.g. a mouse+key combo like "XButton1 & 1").
 						return false;
 				}
 			}
@@ -477,6 +477,19 @@ namespace EveFPreview.Configuration.Implementation
 			if (token.Length == 1 && char.IsLetter(token[0]))
 			{
 				return Enum.TryParse(token.ToUpperInvariant(), out Keys letterKey) ? letterKey : Keys.None;
+			}
+
+			switch (token.ToLowerInvariant())
+			{
+				case "mouse4":
+				case "xbutton1":
+					return Keys.XButton1;
+				case "mouse5":
+				case "xbutton2":
+					return Keys.XButton2;
+				case "middle":
+				case "mbutton":
+					return Keys.MButton;
 			}
 
 			return Enum.TryParse(token, true, out Keys parsed) ? parsed : Keys.None;

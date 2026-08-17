@@ -71,6 +71,17 @@ namespace EveFPreview.UI.Hotkeys
 				return false;
 			}
 
+			if (MouseButtonHotkeyMonitor.IsExtraMouseButton(this.KeyCode))
+			{
+				if (!MouseButtonHotkeyMonitor.Register(this))
+				{
+					return false;
+				}
+
+				this.IsRegistered = true;
+				return true;
+			}
+
 			// Remove all modifiers from the 'main' hotkey
 			uint key = (uint)this.KeyCode & (~(uint)Keys.Alt) & (~(uint)Keys.Control) & (~(uint)Keys.Shift);
 
@@ -103,6 +114,12 @@ namespace EveFPreview.UI.Hotkeys
 
 			this.IsRegistered = false;
 
+			if (MouseButtonHotkeyMonitor.IsExtraMouseButton(this.KeyCode))
+			{
+				MouseButtonHotkeyMonitor.Unregister(this);
+				return;
+			}
+
 			Application.RemoveMessageFilter(this);
 
 			// Clean up after ourselves
@@ -118,6 +135,11 @@ namespace EveFPreview.UI.Hotkeys
 					&& this.OnPressed();
 		}
 		#endregion
+
+		internal bool RaisePressed()
+		{
+			return this.OnPressed();
+		}
 
 		private bool OnPressed()
 		{
