@@ -38,6 +38,7 @@ namespace EveFPreview.View
 		public CycleGroupsSettingsControl()
 		{
 			this.SuspendLayout();
+			this.AutoScaleMode = AutoScaleMode.Inherit;
 
 			var root = new TableLayoutPanel
 			{
@@ -72,6 +73,9 @@ namespace EveFPreview.View
 
 			var groupColumn = new DataGridViewComboBoxColumn
 			{
+				// AutoComplete forces ComboBox.RecreateHandle on DPI font scaling.
+				// That throws Win32Exception 1400 on mixed-DPI setups (e.g. 4K primary + 2K secondary).
+				AutoComplete = false,
 				FillWeight = 25,
 				FlatStyle = FlatStyle.Flat,
 				HeaderText = "Cycle group",
@@ -106,6 +110,7 @@ namespace EveFPreview.View
 			this._grid.CellValueChanged += this.Grid_CellValueChanged;
 			this._grid.CurrentCellDirtyStateChanged += this.Grid_CurrentCellDirtyStateChanged;
 			this._grid.CellContentClick += this.Grid_CellContentClick;
+			this._grid.EditingControlShowing += this.Grid_EditingControlShowing;
 
 			var bottomPanel = new FlowLayoutPanel
 			{
@@ -295,6 +300,17 @@ namespace EveFPreview.View
 			}
 
 			this._addActiveClientButton.Enabled = this._activeClientCombo.Items.Count > 0;
+		}
+
+		private void Grid_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
+		{
+			if (e.Control is not ComboBox combo)
+			{
+				return;
+			}
+
+			combo.AutoCompleteMode = AutoCompleteMode.None;
+			combo.AutoCompleteSource = AutoCompleteSource.None;
 		}
 
 		private void Grid_CurrentCellDirtyStateChanged(object sender, EventArgs e)
