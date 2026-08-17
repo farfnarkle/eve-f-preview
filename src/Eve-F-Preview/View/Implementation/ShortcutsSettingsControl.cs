@@ -10,8 +10,6 @@ namespace EveFPreview.View
 	{
 		private const int WM_KEYDOWN = 0x100;
 		private const int WM_SYSKEYDOWN = 0x104;
-		private const int ButtonPanelWidth = 100;
-		private const int RowHeight = 28;
 		private const string NoModifierChoice = "(none)";
 
 		// Click-through is a held-modifier action, not a hotkey, so it is picked from a list
@@ -22,6 +20,18 @@ namespace EveFPreview.View
 		};
 
 		private readonly List<HotkeyRow> _rows = new List<HotkeyRow>();
+		private readonly List<Button> _actionButtons = new List<Button>();
+		private readonly List<Panel> _fieldPanels = new List<Panel>();
+		private readonly List<Control> _cycleGroupModeControls = new List<Control>();
+		private readonly List<Control> _dynamicCycleModeControls = new List<Control>();
+		private List<Control> _currentSectionControls;
+		private readonly ToolTip _toolTip = new ToolTip
+		{
+			AutoPopDelay = 15000,
+			InitialDelay = 400,
+			ReshowDelay = 200,
+			ShowAlways = true
+		};
 		private ComboBox _clickThroughModifierCombo;
 		private TableLayoutPanel _layout;
 		private HotkeyRow _recordingRow;
@@ -37,9 +47,38 @@ namespace EveFPreview.View
 			this.InitializeComponent();
 			this.BuildLayoutTable();
 			this.BuildRows();
+			this.ApplyScaledSizes();
 			this.UpdateLayoutSize();
 			this.ScrollPanel.Resize += this.ScrollPanel_Resize;
 			this.Resize += this.ShortcutsSettingsControl_Resize;
+		}
+
+		protected override void OnHandleCreated(EventArgs e)
+		{
+			base.OnHandleCreated(e);
+			this.ApplyScaledSizes();
+			this.UpdateLayoutSize();
+		}
+
+		protected override void OnDpiChangedAfterParent(EventArgs e)
+		{
+			base.OnDpiChangedAfterParent(e);
+			this.ApplyScaledSizes();
+			this._layout?.PerformLayout();
+			this.UpdateLayoutSize();
+		}
+
+		public void SetDynamicCycleEnabled(bool enabled)
+		{
+			if (this._recordingRow != null)
+			{
+				this.StopRecording();
+			}
+
+			this.SetSectionVisible(this._cycleGroupModeControls, !enabled);
+			this.SetSectionVisible(this._dynamicCycleModeControls, enabled);
+			this._layout?.PerformLayout();
+			this.UpdateLayoutSize();
 		}
 
 		public GlobalShortcutSettings GetSettings()
@@ -71,6 +110,8 @@ namespace EveFPreview.View
 				}
 
 				this.SetClickThroughModifier(settings.ClickThroughModifier);
+				this._layout?.PerformLayout();
+				this.UpdateLayoutSize();
 			}
 			finally
 			{
@@ -95,11 +136,11 @@ namespace EveFPreview.View
 				GrowStyle = TableLayoutPanelGrowStyle.AddRows,
 				Location = new Point(0, 0),
 				Margin = new Padding(0),
-				Padding = new Padding(4, 4, 4, 8)
+				Padding = new Padding(12, 12, 12, 8)
 			};
 			this._layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 			this._layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-			this._layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, ButtonPanelWidth));
+			this._layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, SettingsHelp.IconColumnWidth));
 
 			this.ScrollPanel.Controls.Add(this._layout);
 			this.UpdateLayoutSize();
@@ -128,6 +169,7 @@ namespace EveFPreview.View
 				width -= SystemInformation.VerticalScrollBarWidth;
 			}
 
+			this._layout.MinimumSize = new Size(width, 0);
 			this._layout.Width = width;
 			this._layout.PerformLayout();
 
@@ -145,7 +187,8 @@ namespace EveFPreview.View
 
 		private void BuildRows()
 		{
-			this.AddSectionHeader("Cycle groups");
+			this._currentSectionControls = this._cycleGroupModeControls;
+			this.AddSectionHeader("Cycle groups", SettingsHelp.Text.CycleGroups);
 			this.AddCycleGroupRow("Group 1 forward", HotkeyRowKind.CycleGroup1Forward);
 			this.AddCycleGroupRow("Group 1 backward", HotkeyRowKind.CycleGroup1Backward);
 			this.AddCycleGroupRow("Group 2 forward", HotkeyRowKind.CycleGroup2Forward);
@@ -157,36 +200,58 @@ namespace EveFPreview.View
 			this.AddCycleGroupRow("Group 5 forward", HotkeyRowKind.CycleGroup5Forward);
 			this.AddCycleGroupRow("Group 5 backward", HotkeyRowKind.CycleGroup5Backward);
 
-			this.AddSectionHeader("Dynamic cycle (layout order; ignores General setting)");
+			this._currentSectionControls = this._dynamicCycleModeControls;
+			this.AddSectionHeader("Dynamic cycle", SettingsHelp.Text.DynamicCycleHotkeys);
 			this.AddCycleGroupRow("Dynamic forward", HotkeyRowKind.DynamicCycleForward);
 			this.AddCycleGroupRow("Dynamic backward", HotkeyRowKind.DynamicCycleBackward);
 
+			this._currentSectionControls = null;
 			this.AddSectionHeader("Other");
 			this.AddCycleGroupRow("Minimize all clients", HotkeyRowKind.MinimizeAllClients);
 			this.AddCycleGroupRow("Toggle thumbnails visibility", HotkeyRowKind.ToggleThumbnails);
-			this.AddModifierRow("Click-through while held");
+			this.AddModifierRow("Click-through while held", SettingsHelp.Text.ClickThrough);
 
 			var note = new Label
 			{
 				AutoSize = true,
 				Dock = DockStyle.Fill,
 				Margin = new Padding(0, 8, 0, 0),
-				Text = "Uses configured group order unless Dynamic cycle group is enabled on General. Per-client activation hotkeys are set on the Clients tab (Ctrl+click a character)."
+				Text = "Click Set to record a hotkey. Click Clear to remove it. Per-client activation hotkeys are set on the Clients tab (Ctrl+click a character)."
 			};
 			this.AddFullWidthControl(note, SizeType.AutoSize);
+			this.SetDynamicCycleEnabled(false);
 		}
 
-		private void AddSectionHeader(string text)
+		private void AddSectionHeader(string text, string helpText = null)
 		{
 			var header = new Label
 			{
 				AutoSize = true,
-				Dock = DockStyle.Fill,
 				Font = new Font(this.Font, FontStyle.Bold),
-				Margin = new Padding(0, 10, 0, 4),
+				Margin = new Padding(0, 2, 6, 0),
 				Text = text
 			};
-			this.AddFullWidthControl(header, SizeType.AutoSize);
+
+			if (string.IsNullOrEmpty(helpText))
+			{
+				header.Dock = DockStyle.Fill;
+				header.Margin = new Padding(0, 10, 0, 4);
+				this.AddFullWidthControl(header, SizeType.AutoSize);
+				return;
+			}
+
+			var flow = new FlowLayoutPanel
+			{
+				AutoSize = true,
+				AutoSizeMode = AutoSizeMode.GrowAndShrink,
+				Dock = DockStyle.Fill,
+				FlowDirection = FlowDirection.LeftToRight,
+				Margin = new Padding(0, 10, 0, 4),
+				WrapContents = false
+			};
+			flow.Controls.Add(header);
+			flow.Controls.Add(SettingsHelp.CreateIcon(helpText));
+			this.AddFullWidthControl(flow, SizeType.AutoSize);
 		}
 
 		private void AddFullWidthControl(Control control, SizeType rowSizeType)
@@ -196,19 +261,40 @@ namespace EveFPreview.View
 			this._layout.RowCount++;
 			this._layout.Controls.Add(control, 0, rowIndex);
 			this._layout.SetColumnSpan(control, 3);
+			this.TrackSectionControl(control);
+		}
+
+		private void TrackSectionControl(Control control)
+		{
+			this._currentSectionControls?.Add(control);
+		}
+
+		private void SetSectionVisible(List<Control> controls, bool visible)
+		{
+			foreach (Control control in controls)
+			{
+				control.Visible = visible;
+				int row = this._layout.GetRow(control);
+				if (row >= 0 && row < this._layout.RowStyles.Count)
+				{
+					this._layout.RowStyles[row] = visible
+						? new RowStyle(SizeType.AutoSize)
+						: new RowStyle(SizeType.Absolute, 0);
+				}
+			}
 		}
 
 		private void AddCycleGroupRow(string labelText, HotkeyRowKind kind)
 		{
 			int rowIndex = this._layout.RowCount;
-			this._layout.RowStyles.Add(new RowStyle(SizeType.Absolute, RowHeight));
+			this._layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 			this._layout.RowCount++;
 
 			var label = new Label
 			{
 				Anchor = AnchorStyles.Left,
 				AutoSize = true,
-				Margin = new Padding(0, 6, 4, 0),
+				Margin = new Padding(0, 8, 8, 8),
 				Text = labelText,
 				TextAlign = ContentAlignment.MiddleLeft
 			};
@@ -216,59 +302,45 @@ namespace EveFPreview.View
 			var textBox = new TextBox
 			{
 				Dock = DockStyle.Fill,
-				Margin = new Padding(0, 2, 0, 2),
+				Margin = new Padding(0, 0, 8, 0),
 				ReadOnly = true
 			};
 
-			var setButton = new Button
-			{
-				Margin = new Padding(0, 0, 2, 0),
-				Size = new Size(46, 23),
-				Text = "Set",
-				UseVisualStyleBackColor = true
-			};
+			var setButton = this.CreateActionButton("Set");
+			setButton.Dock = DockStyle.Right;
+			setButton.Margin = new Padding(0);
+			this._toolTip.SetToolTip(setButton, "Set records a hotkey. Clear removes the current hotkey.");
 
-			var clearButton = new Button
+			var fieldPanel = new Panel
 			{
-				Margin = new Padding(0),
-				Size = new Size(46, 23),
-				Text = "Clear",
-				UseVisualStyleBackColor = true
-			};
-
-			var buttonPanel = new FlowLayoutPanel
-			{
-				AutoSize = false,
 				Dock = DockStyle.Fill,
-				FlowDirection = FlowDirection.LeftToRight,
-				Margin = new Padding(0, 2, 0, 2),
-				Padding = new Padding(0),
-				WrapContents = false
+				Margin = new Padding(0, 4, 0, 4)
 			};
-			buttonPanel.Controls.Add(setButton);
-			buttonPanel.Controls.Add(clearButton);
+			fieldPanel.Controls.Add(textBox);
+			fieldPanel.Controls.Add(setButton);
+			this._fieldPanels.Add(fieldPanel);
 
 			this._layout.Controls.Add(label, 0, rowIndex);
-			this._layout.Controls.Add(textBox, 1, rowIndex);
-			this._layout.Controls.Add(buttonPanel, 2, rowIndex);
+			this._layout.Controls.Add(fieldPanel, 1, rowIndex);
+			this.TrackSectionControl(label);
+			this.TrackSectionControl(fieldPanel);
 
 			var row = new HotkeyRow(kind, textBox, setButton);
 			this._rows.Add(row);
 			setButton.Click += (_, _) => this.SetButton_Click(row);
-			clearButton.Click += (_, _) => this.ClearButton_Click(row);
 		}
 
-		private void AddModifierRow(string labelText)
+		private void AddModifierRow(string labelText, string helpText = null)
 		{
 			int rowIndex = this._layout.RowCount;
-			this._layout.RowStyles.Add(new RowStyle(SizeType.Absolute, RowHeight));
+			this._layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 			this._layout.RowCount++;
 
 			var label = new Label
 			{
 				Anchor = AnchorStyles.Left,
 				AutoSize = true,
-				Margin = new Padding(0, 6, 4, 0),
+				Margin = new Padding(0, 8, 8, 8),
 				Text = labelText,
 				TextAlign = ContentAlignment.MiddleLeft
 			};
@@ -277,7 +349,7 @@ namespace EveFPreview.View
 			{
 				Dock = DockStyle.Fill,
 				DropDownStyle = ComboBoxStyle.DropDownList,
-				Margin = new Padding(0, 2, 0, 2)
+				Margin = new Padding(0, 4, 0, 4)
 			};
 			this._clickThroughModifierCombo.Items.AddRange(ModifierChoices);
 			this._clickThroughModifierCombo.SelectedIndex = 0;
@@ -285,7 +357,10 @@ namespace EveFPreview.View
 
 			this._layout.Controls.Add(label, 0, rowIndex);
 			this._layout.Controls.Add(this._clickThroughModifierCombo, 1, rowIndex);
-			this._layout.SetColumnSpan(this._clickThroughModifierCombo, 2);
+			if (!string.IsNullOrEmpty(helpText))
+			{
+				this._layout.Controls.Add(SettingsHelp.CreateIcon(helpText), 2, rowIndex);
+			}
 		}
 
 		private string GetClickThroughModifier()
@@ -351,15 +426,27 @@ namespace EveFPreview.View
 			return string.Join("+", ordered);
 		}
 
-		private void ClearButton_Click(HotkeyRow row)
+		private Button CreateActionButton(string text)
 		{
-			if (this._recordingRow == row)
+			var button = new Button
 			{
-				this.StopRecording();
-			}
+				Margin = new Padding(4, 4, 0, 4),
+				Text = text
+			};
+			SettingsHelp.StyleActionButton(this, button);
+			this._actionButtons.Add(button);
+			return button;
+		}
 
-			row.TextBox.Text = string.Empty;
-			this.NotifySettingsChanged();
+		private void ApplyScaledSizes()
+		{
+			SettingsHelp.ApplyScaledButtonSizes(this, this._actionButtons.ToArray());
+			int rowHeight = this.LogicalToDeviceUnits(SettingsHelp.ActionButtonMinHeight);
+			foreach (Panel panel in this._fieldPanels)
+			{
+				panel.MinimumSize = new Size(0, rowHeight);
+				panel.Height = rowHeight;
+			}
 		}
 
 		private void SetButton_Click(HotkeyRow row)
@@ -367,6 +454,20 @@ namespace EveFPreview.View
 			if (this._recordingRow == row)
 			{
 				this.StopRecording();
+				return;
+			}
+
+			if (row.HasHotkey)
+			{
+				if (this._recordingRow != null)
+				{
+					this.StopRecording();
+				}
+
+				row.TextBox.Text = string.Empty;
+				row.SyncActionButton();
+				this._layout.PerformLayout();
+				this.NotifySettingsChanged();
 				return;
 			}
 
@@ -378,6 +479,8 @@ namespace EveFPreview.View
 			this.StopRecording();
 			this._recordingRow = row;
 			row.SetButton.Text = "Cancel";
+			row.SetButton.Parent?.PerformLayout();
+			this._layout.PerformLayout();
 			row.TextBox.BackColor = SystemColors.Info;
 			this.SuspendGlobalHotkeys?.Invoke();
 			this._captureFilter = new HotkeyCaptureFilter(this.OnHotkeyCaptured, this.OnHotkeyCaptureCancelled);
@@ -394,8 +497,10 @@ namespace EveFPreview.View
 
 			if (this._recordingRow != null)
 			{
-				this._recordingRow.SetButton.Text = "Set";
-				this._recordingRow.TextBox.BackColor = SystemColors.Window;
+				this._recordingRow.SyncActionButton();
+				this._recordingRow.SetButton.Parent?.PerformLayout();
+				this._layout.PerformLayout();
+				this._recordingRow.RestoreIdleFieldAppearance();
 				this._recordingRow = null;
 			}
 
@@ -412,6 +517,8 @@ namespace EveFPreview.View
 			}
 
 			row.TextBox.Text = keys == Keys.None ? string.Empty : HotkeyFormatting.ToDisplayString(keys);
+			row.SyncActionButton();
+			this._layout.PerformLayout();
 			this.NotifySettingsChanged();
 		}
 
@@ -516,6 +623,18 @@ namespace EveFPreview.View
 			public TextBox TextBox { get; }
 			public Button SetButton { get; }
 
+			public bool HasHotkey => !string.IsNullOrWhiteSpace(this.TextBox.Text);
+
+			public void SyncActionButton()
+			{
+				this.SetButton.Text = this.HasHotkey ? "Clear" : "Set";
+			}
+
+			public void RestoreIdleFieldAppearance()
+			{
+				this.TextBox.ResetBackColor();
+			}
+
 			public void LoadFrom(GlobalShortcutSettings settings)
 			{
 				this.TextBox.Text = this.Kind switch
@@ -536,6 +655,7 @@ namespace EveFPreview.View
 					HotkeyRowKind.ToggleThumbnails => settings.ToggleThumbnails,
 					_ => string.Empty
 				};
+				this.SyncActionButton();
 			}
 
 			public void ApplyTo(GlobalShortcutSettings settings)
