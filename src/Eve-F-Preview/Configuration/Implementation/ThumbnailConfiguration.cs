@@ -88,6 +88,7 @@ namespace EveFPreview.Configuration.Implementation
 				{"EVE - Example Toon 2", ZoomAnchor.S}
 			};
 
+			this.CycleGroupExclusions = new Dictionary<string, bool>();
 			this.PerClientLayout = new Dictionary<string, Dictionary<string, Point>>();
 			this.FlatLayout = new Dictionary<string, Point>();
 			this.AccountThumbnailLayout = new Dictionary<string, Point>();
@@ -187,7 +188,7 @@ namespace EveFPreview.Configuration.Implementation
 		[JsonProperty("ConfigVersion")]
 		public int ConfigVersion { get; set; }
 
-		[JsonIgnore]
+		[JsonProperty("CycleGroupExclusions")]
 		public Dictionary<string, bool> CycleGroupExclusions { get; set; }
 
 		[JsonProperty("CycleGroup1ForwardHotkeys")]
@@ -619,6 +620,7 @@ namespace EveFPreview.Configuration.Implementation
 			this.AutoSettingsSyncChannelKeysToKeep ??= new List<string>();
 			this.AutoSettingsSyncChannelKeysToStrip ??= new List<string>();
 			this.AutoSettingsSyncProfileName ??= string.Empty;
+			this.CycleGroupExclusions ??= new Dictionary<string, bool>();
 		}
 
 		private static int ApplyRestrictions(int value, int minimum, int maximum)

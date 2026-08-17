@@ -55,6 +55,7 @@ namespace EveFPreview.View
 			this.AnimationStyleCombo.DataSource = Enum.GetValues(typeof(AnimationStyle));
 
 			this.InitShortcutsTab();
+			this.InitCycleGroupsTab();
 			this.InitSettingsSyncTab();
 			this.InitConfigProfileControls();
 			this.InitPackedTabLayouts();
@@ -504,6 +505,29 @@ namespace EveFPreview.View
 
 			this.SettingsSyncControl.PersistConfiguration = persistConfiguration;
 			this.SettingsSyncControl.SetConfiguration(configuration);
+		}
+
+		private void InitCycleGroupsTab()
+		{
+			var tabControl = (TabControl)this.Controls.Find("ContentTabControl", true).First();
+			var cycleGroupsTabPage = tabControl.TabPages.Cast<TabPage>().First(page => page.Name == "CycleGroupsTabPage");
+
+			this.CycleGroupsSettingsControl = new CycleGroupsSettingsControl
+			{
+				Dock = DockStyle.Fill
+			};
+			cycleGroupsTabPage.Controls.Add(this.CycleGroupsSettingsControl);
+		}
+
+		public void SetCycleGroupsConfiguration(IThumbnailConfiguration configuration, Action persistConfiguration = null)
+		{
+			if (this.CycleGroupsSettingsControl == null)
+			{
+				return;
+			}
+
+			this.CycleGroupsSettingsControl.PersistConfiguration = persistConfiguration;
+			this.CycleGroupsSettingsControl.SetConfiguration(configuration);
 		}
 
 		public GlobalShortcutSettings GetGlobalShortcutSettings()
@@ -1049,6 +1073,7 @@ namespace EveFPreview.View
 			}
 
 			this.ThumbnailsList.EndUpdate();
+			this.RefreshCycleGroupsActiveClients();
 		}
 
 		public void RemoveThumbnails(IList<IThumbnailDescription> thumbnails)
@@ -1061,6 +1086,13 @@ namespace EveFPreview.View
 			}
 
 			this.ThumbnailsList.EndUpdate();
+			this.RefreshCycleGroupsActiveClients();
+		}
+
+		private void RefreshCycleGroupsActiveClients()
+		{
+			this.CycleGroupsSettingsControl?.SetActiveClientTitles(
+				this.ThumbnailsList.Items.Cast<IThumbnailDescription>().Select(item => item.Title));
 		}
 
 		public void RefreshZoomSettings()

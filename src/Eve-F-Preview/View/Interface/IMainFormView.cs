@@ -69,6 +69,9 @@ namespace EveFPreview.View
 		void ConfigureShortcutHotkeyRecording(Action suspendGlobalHotkeys, Action resumeGlobalHotkeys);
 		void SetSettingsSyncConfiguration(IThumbnailConfiguration configuration, Action persistConfiguration = null);
 
+		/// <summary>Gives the view direct access to the cycle group membership dictionaries for the Cycle Groups tab UI.</summary>
+		void SetCycleGroupsConfiguration(IThumbnailConfiguration configuration, Action persistConfiguration = null);
+
 		/// <summary>Gives the view direct access to config-profile operations (list/switch/save-as/import) for the General tab UI.</summary>
 		void SetConfigurationStorage(IConfigurationStorage configurationStorage);
 

@@ -44,9 +44,10 @@ namespace EveFPreview.Services
 		public IList<string> ChannelKeysToStrip { get; set; } = new List<string>();
 
 		/// <summary>
-		/// Keep the destination's own ship module layout (core_user ui.slotOrder) and per-module
-		/// state (core_char auto-repeat / auto-reload) instead of overwriting them with the source's,
-		/// whose ship and module itemIDs belong to the source's own ships. Copy mode only.
+		/// Keep the destination's own ship module layout (core_user ui.slotOrder), drone groups
+		/// (ui.droneBlah2 / drones_favoriteGroupID_*), fleet formation warp prefs (core_char
+		/// setFleetFormation*), and per-module state (core_char auto-repeat / auto-reload) instead
+		/// of overwriting them with the source's. Copy mode only.
 		/// </summary>
 		public bool PreserveModuleState { get; set; } = true;
 		public EveSettingsSyncMode Mode { get; set; } = EveSettingsSyncMode.Copy;
@@ -311,7 +312,7 @@ namespace EveFPreview.Services
 
 			if (_options.Mode == EveSettingsSyncMode.Symlink && _options.PreserveModuleState)
 			{
-				report.Warnings.Add("Symlinked characters share one settings file, so ship module layout and auto-repeat / auto-reload cannot be kept separately.");
+				report.Warnings.Add("Symlinked characters share one settings file, so ship module layout, drone assignments, fleet formation, and auto-repeat / auto-reload cannot be kept separately.");
 			}
 
 			foreach (string profileDir in EnumerateProfileDirs(_options.EveDataRoot, _options.ServerFolderPattern))

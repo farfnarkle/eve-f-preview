@@ -929,7 +929,9 @@ namespace EveFPreview.Services
 
 				IThumbnailView view = this._thumbnailViewFactory.Create(process.Handle, process.Title, this._configuration.ThumbnailSize);
 				view.IsOverlayEnabled = this._configuration.ShowThumbnailOverlays;
-				view.IsExcludedFromCycleGroup = false;
+				view.IsExcludedFromCycleGroup = this._configuration.CycleGroupExclusions.TryGetValue(process.Title, out bool isExcluded) && isExcluded;
+				// Title (and its indicator draw) was already set by the factory before we knew the restored exclusion state above.
+				view.SetCycleGroupIndicator(view.IsExcludedFromCycleGroup, this._configuration.CycleGroupIndicatorAnchor);
 				view.SetFrames(this._configuration.ShowThumbnailFrames);
 				// Max/Min size limitations should be set AFTER the frames are disabled
 				// Otherwise thumbnail window will be unnecessary resized
@@ -1550,7 +1552,7 @@ namespace EveFPreview.Services
 			}
 		}
 
-		private void ThumbnailToggleCycleGroup(IntPtr id)
+		private async void ThumbnailToggleCycleGroup(IntPtr id)
 		{
 			var view = GetClientByPointer(id);
 			if ( view != null )
@@ -1558,6 +1560,11 @@ namespace EveFPreview.Services
 				view.IsExcludedFromCycleGroup = !view.IsExcludedFromCycleGroup;
 				view.SetCycleGroupIndicator(view.IsExcludedFromCycleGroup, _configuration.CycleGroupIndicatorAnchor);
 
+				if (view.Title != ThumbnailManager.DEFAULT_CLIENT_TITLE)
+				{
+					this._configuration.CycleGroupExclusions[view.Title] = view.IsExcludedFromCycleGroup;
+					await this._mediator.Send(new SaveConfiguration());
+				}
 			}
 			this.RefreshThumbnails();
 		}

@@ -28,11 +28,28 @@ namespace EveFPreview.Services
 		private static readonly string[] ModuleStateSections = { "autorepeat", "autoreload" };
 
 		/// <summary>
-		/// core_user "ui" sections keyed by ship itemID. slotOrder holds the HUD module arrangement
-		/// per ship, so copying it from the source account drops every entry for the destination's
-		/// own ships and their modules snap back to raw fitting order.
+		/// core_char "ui" keys that are per-character gameplay prefs (not shared UI chrome). Fleet
+		/// formation warp size/spacing/shape belong to the destination character's own flying style.
 		/// </summary>
-		private static readonly string[] ShipUiStateSections = { "slotOrder" };
+		private static readonly string[] CharUiStateSections =
+		{
+			"setFleetFormation",
+			"setFleetFormationSize",
+			"setFleetFormationSpacing"
+		};
+
+		/// <summary>
+		/// core_user "ui" sections keyed by ship / drone itemIDs. slotOrder is HUD module layout per
+		/// ship; droneBlah2 is the named drone groups with per-item droneIDs. Copying either from
+		/// the source account drops every entry that only the destination owns.
+		/// </summary>
+		private static readonly string[] ShipUiStateSections = { "slotOrder", "droneBlah2" };
+
+		/// <summary>
+		/// Per-ship-type favorite drone group under core_user "ui" (e.g. drones_favoriteGroupID_17715).
+		/// Values reference groups inside droneBlah2, so they must stay with the destination account.
+		/// </summary>
+		private const string DroneFavoriteKeyPrefix = "drones_favoriteGroupID_";
 
 		public static bool IsBuiltinChannelKey(string key)
 		{
@@ -163,10 +180,10 @@ namespace EveFPreview.Services
 		}
 
 		/// <summary>
-		/// Replaces the source's module-instance sections with the destination's existing ones so a
-		/// sync does not reset per-module auto-repeat / auto-reload on the destination's ships.
-		/// Sections absent from the destination are dropped instead of inherited. Returns the
-		/// section names that were carried over.
+		/// Replaces the source's module-instance sections and per-character fleet-formation prefs
+		/// with the destination's existing ones so a sync does not reset them. Sections absent from
+		/// the destination are dropped instead of inherited. Returns the section names that were
+		/// carried over.
 		/// </summary>
 		public static IList<string> PreserveModuleState(object root, string targetPath)
 		{
@@ -175,13 +192,24 @@ namespace EveFPreview.Services
 				return new List<string>();
 			}
 
-			return PreserveSections(top, targetTop, ModuleStateSections, string.Empty);
+			var preserved = new List<string>();
+			preserved.AddRange(PreserveSections(top, targetTop, ModuleStateSections, string.Empty));
+
+			if (TryGetDictValue(top, "ui", out object sourceUiObj)
+				&& sourceUiObj is Dictionary<object, object> sourceUi
+				&& TryGetDictValue(targetTop, "ui", out object targetUiObj)
+				&& targetUiObj is Dictionary<object, object> targetUi)
+			{
+				preserved.AddRange(PreserveSections(sourceUi, targetUi, CharUiStateSections, "ui."));
+			}
+
+			return preserved;
 		}
 
 		/// <summary>
-		/// Replaces the source's per-ship HUD sections under core_user "ui" with the destination's
-		/// own, so a sync does not reset the module layout on the destination's ships. Returns the
-		/// section names that were carried over.
+		/// Replaces the source's per-ship HUD and drone-assignment sections under core_user "ui"
+		/// with the destination's own, so a sync does not reset module layout or drone groups on
+		/// the destination's ships. Returns the section names that were carried over.
 		/// </summary>
 		public static IList<string> PreserveShipUiState(object root, string targetPath)
 		{
@@ -195,7 +223,10 @@ namespace EveFPreview.Services
 				return new List<string>();
 			}
 
-			return PreserveSections(sourceUi, targetUi, ShipUiStateSections, "ui.");
+			var preserved = new List<string>();
+			preserved.AddRange(PreserveSections(sourceUi, targetUi, ShipUiStateSections, "ui."));
+			preserved.AddRange(PreserveKeyPrefix(sourceUi, targetUi, DroneFavoriteKeyPrefix, "ui."));
+			return preserved;
 		}
 
 		/// <summary>
@@ -232,6 +263,48 @@ namespace EveFPreview.Services
 				preserved.Add(label + section + " (" + DescribeEntryCount(targetHas ? targetValue : null) + ")");
 			}
 
+			return preserved;
+		}
+
+		/// <summary>
+		/// Replaces every source key matching prefix with the destination's set of matching keys.
+		/// Source-only matches are dropped so the destination does not inherit foreign itemIDs.
+		/// </summary>
+		private static IList<string> PreserveKeyPrefix(
+			Dictionary<object, object> source,
+			Dictionary<object, object> target,
+			string prefix,
+			string label)
+		{
+			var preserved = new List<string>();
+			if (string.IsNullOrEmpty(prefix))
+			{
+				return preserved;
+			}
+
+			var sourceKeys = source.Keys
+				.Where(k => (k?.ToString() ?? string.Empty).StartsWith(prefix, StringComparison.Ordinal))
+				.ToList();
+			var targetEntries = target
+				.Where(kv => (kv.Key?.ToString() ?? string.Empty).StartsWith(prefix, StringComparison.Ordinal))
+				.ToList();
+
+			if (sourceKeys.Count == 0 && targetEntries.Count == 0)
+			{
+				return preserved;
+			}
+
+			foreach (object key in sourceKeys)
+			{
+				source.Remove(key);
+			}
+
+			foreach (KeyValuePair<object, object> entry in targetEntries)
+			{
+				source[entry.Key] = entry.Value;
+			}
+
+			preserved.Add(label + prefix + "* (" + targetEntries.Count + " entries)");
 			return preserved;
 		}
 

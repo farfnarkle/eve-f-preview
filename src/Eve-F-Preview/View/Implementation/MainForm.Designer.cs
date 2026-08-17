@@ -56,6 +56,7 @@ namespace EveFPreview.View
 			Panel ThumbnailsHeaderPanel;
 			Label ThumbnailsListLabel;
 			TabPage ShortcutsTabPage;
+			TabPage CycleGroupsTabPage;
 			TabPage SettingsSyncTabPage;
 			TabPage AboutTabPage;
 			Panel AboutPanel;
@@ -182,6 +183,7 @@ namespace EveFPreview.View
 			ThumbnailsHeaderPanel = new Panel();
 			ThumbnailsListLabel = new Label();
 			ShortcutsTabPage = new TabPage();
+			CycleGroupsTabPage = new TabPage();
 			SettingsSyncTabPage = new TabPage();
 			AboutTabPage = new TabPage();
 			AboutPanel = new Panel();
@@ -217,6 +219,7 @@ namespace EveFPreview.View
 			ClientsPanel.SuspendLayout();
 			ThumbnailsHeaderPanel.SuspendLayout();
 			ShortcutsTabPage.SuspendLayout();
+			CycleGroupsTabPage.SuspendLayout();
 			SettingsSyncTabPage.SuspendLayout();
 			AboutTabPage.SuspendLayout();
 			AboutPanel.SuspendLayout();
@@ -265,6 +268,7 @@ namespace EveFPreview.View
 			ContentTabControl.Controls.Add(OverlayTabPage);
 			ContentTabControl.Controls.Add(ClientsTabPage);
 			ContentTabControl.Controls.Add(ShortcutsTabPage);
+			ContentTabControl.Controls.Add(CycleGroupsTabPage);
 			ContentTabControl.Controls.Add(SettingsSyncTabPage);
 			ContentTabControl.Controls.Add(AboutTabPage);
 			ContentTabControl.Dock = DockStyle.Fill;
@@ -1660,7 +1664,17 @@ namespace EveFPreview.View
 			ShortcutsTabPage.Size = new Size(327, 243);
 			ShortcutsTabPage.TabIndex = 6;
 			ShortcutsTabPage.Text = "Shortcuts";
-			// 
+			//
+			// CycleGroupsTabPage
+			//
+			CycleGroupsTabPage.BackColor = SystemColors.Control;
+			CycleGroupsTabPage.Location = new Point(124, 4);
+			CycleGroupsTabPage.Margin = new Padding(4);
+			CycleGroupsTabPage.Name = "CycleGroupsTabPage";
+			CycleGroupsTabPage.Size = new Size(327, 243);
+			CycleGroupsTabPage.TabIndex = 8;
+			CycleGroupsTabPage.Text = "Cycle Groups";
+			//
 			// SettingsSyncTabPage
 			// 
 			SettingsSyncTabPage.BackColor = SystemColors.Control;
@@ -1785,7 +1799,7 @@ namespace EveFPreview.View
 			AutoScaleDimensions = new SizeF(7F, 15F);
 			AutoScaleMode = AutoScaleMode.Font;
 			BackColor = SystemColors.Control;
-			ClientSize = new Size(520, 640);
+			ClientSize = new Size(575, 640);
 			Controls.Add(ContentTabControl);
 			FormBorderStyle = FormBorderStyle.FixedSingle;
 			Icon = (Icon)resources.GetObject("$this.Icon");
@@ -1833,6 +1847,7 @@ namespace EveFPreview.View
 			ClientsPanel.ResumeLayout(false);
 			ClientsPanel.PerformLayout();
 			ShortcutsTabPage.ResumeLayout(false);
+			CycleGroupsTabPage.ResumeLayout(false);
 			SettingsSyncTabPage.ResumeLayout(false);
 			AboutTabPage.ResumeLayout(false);
 			AboutPanel.ResumeLayout(false);
@@ -1895,6 +1910,7 @@ namespace EveFPreview.View
 		private CheckBox ShowThumbnailFramesCheckBox;
 		private CheckBox ShowSystemNameOnThumbnailCheckBox;
 		private ShortcutsSettingsControl ShortcutsSettingsControl;
+		private CycleGroupsSettingsControl CycleGroupsSettingsControl;
 		private SettingsSyncControl SettingsSyncControl;
 		private Panel ThumbnailsHeaderPanel;
 		private CheckedListBox ThumbnailsList;
