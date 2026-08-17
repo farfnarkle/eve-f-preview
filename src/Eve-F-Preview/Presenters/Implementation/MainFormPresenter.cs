@@ -315,7 +315,12 @@ namespace EveFPreview.Presenters
 
 			this._configuration.HideThumbnailsOnLostFocus = this.View.HideThumbnailsOnLostFocus;
 			this._configuration.OnlyRegisterCycleHotkeysWhenEveFocused = this.View.OnlyRegisterCycleHotkeysWhenEveFocused;
+			bool dynamicCycleChanged = this._configuration.DynamicCycleGroup != this.View.DynamicCycleGroup;
 			this._configuration.DynamicCycleGroup = this.View.DynamicCycleGroup;
+			if (dynamicCycleChanged)
+			{
+				await this._mediator.Publish(new ThumbnailHotkeysUpdated());
+			}
 			this._configuration.EnableAccountBasedThumbnailPositioning = this.View.EnableAccountBasedThumbnailPositioning;
 
 			bool enableAutoSync = this.View.EnableAutoSettingsSync;

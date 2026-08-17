@@ -29,6 +29,7 @@ namespace EveFPreview.View
 		private System.Windows.Forms.Button _loadConfigProfileButton;
 		private System.Windows.Forms.Button _saveConfigProfileAsButton;
 		private System.Windows.Forms.Button _importConfigProfileButton;
+		private Panel _configProfilePanel;
 		#endregion
 
 		public MainForm(ApplicationContext context)
@@ -56,69 +57,247 @@ namespace EveFPreview.View
 			this.InitShortcutsTab();
 			this.InitSettingsSyncTab();
 			this.InitConfigProfileControls();
+			this.InitPackedTabLayouts();
+			this.ApplyScaledSettingsButtons();
+		}
+
+		protected override void OnHandleCreated(EventArgs e)
+		{
+			base.OnHandleCreated(e);
+			this.ApplyScaledSettingsButtons();
+		}
+
+		protected override void OnDpiChanged(DpiChangedEventArgs e)
+		{
+			base.OnDpiChanged(e);
+			this.ApplyScaledSettingsButtons();
+		}
+
+		private void ApplyScaledSettingsButtons()
+		{
+			SettingsHelp.ApplyScaledButtonSizes(
+				this,
+				this.CloseAllEveClientsButton,
+				this.RefreshPortraitsButton,
+				this.btnLabelFont,
+				this._loadConfigProfileButton,
+				this._saveConfigProfileAsButton,
+				this._importConfigProfileButton);
 		}
 
 		private void InitConfigProfileControls()
 		{
-			// Hosted inside the settings panel (not the tab page) because that panel is docked
-			// Fill: a sibling control on the tab page would be squeezed out of the layout.
-			var host = (Panel)this.Controls.Find("GeneralSettingsPanel", true).First();
-
-			var panel = new Panel
+			this._configProfilePanel = new Panel
 			{
-				Location = new Point(0, 363),
-				Size = new Size(300, 94),
-				Margin = new Padding(4)
+				AutoSize = true,
+				AutoSizeMode = AutoSizeMode.GrowAndShrink,
+				Margin = new Padding(0)
 			};
+
+			var layout = new TableLayoutPanel
+			{
+				AutoSize = true,
+				AutoSizeMode = AutoSizeMode.GrowAndShrink,
+				ColumnCount = 3,
+				Dock = DockStyle.Top,
+				Margin = new Padding(0)
+			};
+			layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
+			layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F));
+			layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
 			var label = new Label
 			{
 				AutoSize = true,
-				Text = "Config profile",
-				Location = new Point(9, 6)
+				Margin = new Padding(0, 0, 0, 4),
+				Text = "Config profile"
 			};
+			layout.Controls.Add(label, 0, 0);
+			layout.SetColumnSpan(label, 3);
 
 			this._configProfileCombo = new System.Windows.Forms.ComboBox
 			{
-				DropDownStyle = ComboBoxStyle.DropDownList,
-				Location = new Point(9, 26),
-				Size = new Size(280, 23)
+				Dock = DockStyle.Fill,
+				DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList,
+				Margin = new Padding(0, 0, 0, 8)
 			};
+			layout.Controls.Add(this._configProfileCombo, 0, 1);
+			layout.SetColumnSpan(this._configProfileCombo, 3);
 
 			this._loadConfigProfileButton = new System.Windows.Forms.Button
 			{
-				Text = "Load",
-				Location = new Point(9, 56),
-				Size = new Size(88, 26),
-				UseVisualStyleBackColor = true
+				Text = "Load"
 			};
+			SettingsHelp.StyleActionButton(this, this._loadConfigProfileButton, fillWidth: true);
+			this._loadConfigProfileButton.Margin = new Padding(0, 0, 4, 0);
 			this._loadConfigProfileButton.Click += this.LoadConfigProfileButton_Click;
 
 			this._saveConfigProfileAsButton = new System.Windows.Forms.Button
 			{
-				Text = "Save As…",
-				Location = new Point(101, 56),
-				Size = new Size(95, 26),
-				UseVisualStyleBackColor = true
+				Text = "Save As…"
 			};
+			SettingsHelp.StyleActionButton(this, this._saveConfigProfileAsButton, fillWidth: true);
+			this._saveConfigProfileAsButton.Margin = new Padding(2, 0, 2, 0);
 			this._saveConfigProfileAsButton.Click += this.SaveConfigProfileAsButton_Click;
 
 			this._importConfigProfileButton = new System.Windows.Forms.Button
 			{
-				Text = "Import…",
-				Location = new Point(200, 56),
-				Size = new Size(89, 26),
-				UseVisualStyleBackColor = true
+				Text = "Import…"
 			};
+			SettingsHelp.StyleActionButton(this, this._importConfigProfileButton, fillWidth: true);
+			this._importConfigProfileButton.Margin = new Padding(4, 0, 0, 0);
 			this._importConfigProfileButton.Click += this.ImportConfigProfileButton_Click;
 
-			panel.Controls.Add(label);
-			panel.Controls.Add(this._configProfileCombo);
-			panel.Controls.Add(this._loadConfigProfileButton);
-			panel.Controls.Add(this._saveConfigProfileAsButton);
-			panel.Controls.Add(this._importConfigProfileButton);
+			layout.Controls.Add(this._loadConfigProfileButton, 0, 2);
+			layout.Controls.Add(this._saveConfigProfileAsButton, 1, 2);
+			layout.Controls.Add(this._importConfigProfileButton, 2, 2);
 
-			host.Controls.Add(panel);
+			this._configProfilePanel.Controls.Add(layout);
+		}
+
+		private void InitPackedTabLayouts()
+		{
+			this.LayoutGeneralTab();
+			this.LayoutThumbnailTab();
+			this.LayoutOverlayTab();
+			this.LayoutZoomTab();
+		}
+
+		private T FindNamed<T>(string name) where T : Control
+		{
+			return (T)this.Controls.Find(name, true).First();
+		}
+
+		private void LayoutGeneralTab()
+		{
+			Panel panel = this.FindNamed<Panel>("GeneralSettingsPanel");
+			TableLayoutPanel table = SettingsHelp.CreateScrollTable();
+
+			SettingsHelp.AddRow(table, this.MinimizeToTrayCheckBox);
+			SettingsHelp.AddRow(table, this.StartMinimizedCheckBox);
+			SettingsHelp.AddRow(table, this.EnableClientLayoutTrackingCheckBox, SettingsHelp.Text.TrackClientLocations);
+			SettingsHelp.AddRow(table, this.HideActiveClientThumbnailCheckBox);
+			SettingsHelp.AddRow(table, this.HideCaptionOnClientsCheckBox, SettingsHelp.Text.HideCaptionBar);
+			SettingsHelp.AddRow(table, this.ShowThumbnailsAlwaysOnTopCheckBox);
+			SettingsHelp.AddRow(table, this.HideThumbnailsOnLostFocusCheckBox);
+			SettingsHelp.AddRow(table, this.OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox, SettingsHelp.Text.CycleHotkeysWhenEveActive);
+			SettingsHelp.AddRow(table, this.DynamicCycleGroupCheckBox, SettingsHelp.Text.DynamicCycleGroup);
+			SettingsHelp.AddRow(table, this.EnableAccountBasedThumbnailPositioningCheckBox, SettingsHelp.Text.AccountBasedPositioning);
+			SettingsHelp.AddRow(table, this.EnablePerClientThumbnailsLayoutsCheckBox, SettingsHelp.Text.UniqueLayout);
+			SettingsHelp.AddRow(table, this.MinimizeInactiveClientsCheckBox);
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateLabeledFill(this.FindNamed<Label>("label4"), this.AnimationStyleCombo),
+				SettingsHelp.Text.AnimationStyle);
+			SettingsHelp.AddRow(table, this.EnableAutoSettingsSyncCheckBox, SettingsHelp.Text.AutoSettingsSync);
+			this.AutoSettingsSyncStatusLabel.AutoSize = true;
+			this.AutoSettingsSyncStatusLabel.MaximumSize = new Size(360, 0);
+			SettingsHelp.AddRow(table, this.AutoSettingsSyncStatusLabel);
+			SettingsHelp.AddRow(table, this._configProfilePanel, SettingsHelp.Text.ConfigProfile);
+			SettingsHelp.AddFullWidthButton(table, this.CloseAllEveClientsButton);
+
+			SettingsHelp.HostInScrollPanel(panel, table);
+		}
+
+		private void LayoutThumbnailTab()
+		{
+			Panel panel = this.FindNamed<Panel>("ThumbnailSettingsPanel");
+			TableLayoutPanel table = SettingsHelp.CreateScrollTable();
+
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateLabeledFill(this.FindNamed<Label>("OpacityLabel"), this.ThumbnailOpacityTrackBar));
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(this.FindNamed<Label>("WidthLabel"), this.ThumbnailsWidthNumericEdit));
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(this.FindNamed<Label>("HeigthLabel"), this.ThumbnailsHeightNumericEdit));
+			SettingsHelp.AddRow(table, this.EnableOverwatchModeCheckBox, SettingsHelp.Text.OverwatchMode);
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(this.OverwatchWidthLabel, this.FocusedThumbnailWidthNumericEdit));
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(this.OverwatchHeightLabel, this.FocusedThumbnailHeightNumericEdit));
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(
+					this.OverwatchPosXLabel,
+					this.FocusedThumbnailLocationXNumericEdit,
+					this.OverwatchPosYLabel,
+					this.FocusedThumbnailLocationYNumericEdit));
+			SettingsHelp.AddRow(table, this.LockThumbnailLocationCheckbox, SettingsHelp.Text.LockThumbnailLocation);
+			SettingsHelp.AddRow(table, this.ThumbnailSnapToEdgesCheckBox, SettingsHelp.Text.SnapToEdges);
+			SettingsHelp.AddRow(table, this.ThumbnailSnapToGridCheckBox, SettingsHelp.Text.SnapToGrid);
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(
+					this.SnapXLabel,
+					this.ThumbnailSnapToGridSizeXNumericEdit,
+					this.SnapYLabel,
+					this.ThumbnailSnapToGridSizeYNumericEdit));
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(
+					this.PreventPreviewsCheckBox,
+					this.FindNamed<Label>("label1"),
+					this.PreventPreviewColorButton),
+				SettingsHelp.Text.DoNotDisplayPreviews);
+			SettingsHelp.AddFullWidthButton(table, this.RefreshPortraitsButton);
+
+			SettingsHelp.HostInScrollPanel(panel, table);
+
+			this.SpawnXLabel.Parent = null;
+			this.SpawnYLabel.Parent = null;
+			this.NewPreviewSpawnLocationXNumericEdit.Parent = null;
+			this.NewPreviewSpawnLocationYNumericEdit.Parent = null;
+			this.NewPreviewAutoTileCheckBox.Parent = null;
+		}
+
+		private void LayoutOverlayTab()
+		{
+			Panel panel = this.FindNamed<Panel>("OverlaySettingsPanel");
+			TableLayoutPanel table = SettingsHelp.CreateScrollTable();
+
+			SettingsHelp.AddRow(table, this.ShowThumbnailOverlaysCheckBox, SettingsHelp.Text.ShowOverlay);
+			SettingsHelp.AddRow(table, this.ShowSystemNameOnThumbnailCheckBox, SettingsHelp.Text.ShowSystemName);
+			SettingsHelp.AddRow(table, this.ShowThumbnailFramesCheckBox, SettingsHelp.Text.ShowFrames);
+			SettingsHelp.AddRow(table, this.EnableActiveClientHighlightCheckBox);
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(this.HighlightColorLabel, this.ActiveClientHighlightColorButton));
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(this.btnLabelFont, this.LabelOverlayLabelFont));
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(this.FindNamed<Label>("label2"), this.OverlayLabelColorButton));
+			SettingsHelp.AddRow(table, this.FindNamed<Label>("label3"));
+			SettingsHelp.AddRow(table, this.FindNamed<Panel>("panel1"));
+			SettingsHelp.AddRow(table, this.FindNamed<Label>("label5"), SettingsHelp.Text.CycleGroupIndicator);
+			SettingsHelp.AddRow(table, this.FindNamed<Panel>("panel2"));
+
+			SettingsHelp.HostInScrollPanel(panel, table);
+		}
+
+		private void LayoutZoomTab()
+		{
+			Panel panel = this.FindNamed<Panel>("ZoomSettingsPanel");
+			TableLayoutPanel table = SettingsHelp.CreateScrollTable();
+
+			SettingsHelp.AddRow(table, this.EnableThumbnailZoomCheckBox);
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateLabeledFill(this.FindNamed<Label>("ZoomFactorLabel"), this.ThumbnailZoomFactorNumericEdit));
+			SettingsHelp.AddRow(
+				table,
+				SettingsHelp.CreateFlow(this.FindNamed<Label>("ZoomAnchorLabel"), this.ZoomAnchorPanel));
+
+			SettingsHelp.HostInScrollPanel(panel, table);
 		}
 
 		public void SetConfigurationStorage(IConfigurationStorage configurationStorage)
@@ -807,6 +986,7 @@ namespace EveFPreview.View
 
 			this.UpdateThumbnailSnapControlsState();
 			this.UpdateOverwatchControlsState();
+			this.UpdateCycleModeDependentUi();
 			this._suppressEvents = false;
 		}
 
@@ -952,12 +1132,22 @@ namespace EveFPreview.View
 
 		private void OptionChanged_Handler(object sender, EventArgs e)
 		{
+			if (sender == this.DynamicCycleGroupCheckBox)
+			{
+				this.UpdateCycleModeDependentUi();
+			}
+
 			if (this._suppressEvents)
 			{
 				return;
 			}
 
 			this.ApplicationSettingsChanged?.Invoke();
+		}
+
+		private void UpdateCycleModeDependentUi()
+		{
+			this.ShortcutsSettingsControl?.SetDynamicCycleEnabled(this.DynamicCycleGroupCheckBox.Checked);
 		}
 
 		private void RefreshPortraitsButton_Click(object sender, EventArgs e)

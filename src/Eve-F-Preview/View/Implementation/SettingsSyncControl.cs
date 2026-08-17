@@ -51,6 +51,7 @@ namespace EveFPreview.View
 		public SettingsSyncControl()
 		{
 			this.SuspendLayout();
+			this.AutoScaleMode = AutoScaleMode.Inherit;
 
 			var panel = new Panel
 			{
@@ -62,152 +63,134 @@ namespace EveFPreview.View
 
 			this._backupButton = new Button
 			{
-				Text = "Back up settings",
-				Location = new Point(9, 8),
-				Size = new Size(135, 28),
-				Margin = new Padding(4),
-				UseVisualStyleBackColor = true
+				Text = "Back up settings"
 			};
 			this._backupButton.Click += this.BackupButton_Click;
 
 			this._openFolderButton = new Button
 			{
-				Text = "Open folder",
-				Location = new Point(154, 8),
-				Size = new Size(135, 28),
-				Margin = new Padding(4),
-				UseVisualStyleBackColor = true
+				Text = "Open folder"
 			};
 			this._openFolderButton.Click += this.OpenFolderButton_Click;
 
 			this._deleteBackupsButton = new Button
 			{
-				Text = "Delete backups",
-				Location = new Point(9, 40),
-				Size = new Size(280, 28),
-				Margin = new Padding(4),
-				UseVisualStyleBackColor = true
+				Text = "Delete backups"
 			};
 			this._deleteBackupsButton.Click += this.DeleteBackupsButton_Click;
 
 			this._profileLabel = new Label
 			{
 				AutoSize = true,
-				Text = "Settings profile",
-				Location = new Point(9, 74),
-				Margin = new Padding(4)
+				Text = "Settings profile"
 			};
 
 			this._profileCombo = new ComboBox
 			{
-				DropDownStyle = ComboBoxStyle.DropDownList,
-				Location = new Point(9, 94),
-				Size = new Size(280, 23),
-				Margin = new Padding(4)
+				DropDownStyle = ComboBoxStyle.DropDownList
 			};
 			this._profileCombo.SelectedIndexChanged += this.ProfileCombo_SelectedIndexChanged;
 
 			var listLabel = new Label
 			{
 				AutoSize = true,
-				Text = "Source character",
-				Location = new Point(9, 124),
-				Margin = new Padding(4)
+				Text = "Source character"
 			};
 
 			this._characterList = new ListBox
 			{
-				Location = new Point(9, 144),
-				Size = new Size(280, 110),
-				IntegralHeight = false,
-				Margin = new Padding(4)
+				IntegralHeight = false
 			};
 			this._characterList.SelectedIndexChanged += this.CharacterList_SelectedIndexChanged;
 
 			this._channelLabel = new Label
 			{
 				AutoSize = true,
-				Text = "Channels to keep on copy",
-				Location = new Point(9, 260),
-				Margin = new Padding(4)
+				Text = "Channels to keep on copy"
 			};
 
 			this._channelList = new CheckedListBox
 			{
-				Location = new Point(9, 280),
-				Size = new Size(280, 150),
 				IntegralHeight = false,
-				CheckOnClick = true,
-				Margin = new Padding(4)
+				CheckOnClick = true
 			};
 			this._channelList.ItemCheck += this.ChannelList_ItemCheck;
 
 			this._preserveModuleStateCheckBox = new CheckBox
 			{
-				AutoSize = false,
+				AutoSize = true,
 				Text = "Keep each alt's own ship module layout",
-				Location = new Point(9, 434),
-				Size = new Size(280, 22),
-				Margin = new Padding(4),
 				Checked = true
 			};
 			this._preserveModuleStateCheckBox.CheckedChanged += this.PreserveModuleStateCheckBox_CheckedChanged;
 
 			this._refreshButton = new Button
 			{
-				Text = "Refresh list",
-				Location = new Point(9, 460),
-				Size = new Size(135, 28),
-				Margin = new Padding(4),
-				UseVisualStyleBackColor = true
+				Text = "Refresh list"
 			};
 			this._refreshButton.Click += (_, __) => this.RefreshLists();
 
 			this._syncButton = new Button
 			{
 				Text = "Sync…",
-				Location = new Point(154, 460),
-				Size = new Size(135, 28),
-				Margin = new Padding(4),
-				UseVisualStyleBackColor = true,
 				Enabled = false
 			};
 			this._syncButton.Click += this.SyncButton_Click;
 
 			this._autoSyncProfileLabel = new Label
 			{
-				AutoSize = false,
-				Location = new Point(9, 496),
-				Size = new Size(280, 48),
-				Margin = new Padding(4),
-				ForeColor = SystemColors.ControlText
+				AutoSize = true,
+				MaximumSize = new Size(360, 0)
 			};
 
 			this._statusLabel = new Label
 			{
-				AutoSize = false,
-				Location = new Point(9, 448),
-				Size = new Size(280, 60),
-				Margin = new Padding(4),
-				ForeColor = SystemColors.GrayText
+				AutoSize = true,
+				ForeColor = SystemColors.GrayText,
+				MaximumSize = new Size(360, 0)
 			};
 
-			panel.Controls.Add(this._backupButton);
-			panel.Controls.Add(this._openFolderButton);
-			panel.Controls.Add(this._deleteBackupsButton);
-			panel.Controls.Add(this._profileLabel);
-			panel.Controls.Add(this._profileCombo);
-			panel.Controls.Add(listLabel);
-			panel.Controls.Add(this._characterList);
-			panel.Controls.Add(this._channelLabel);
-			panel.Controls.Add(this._channelList);
-			panel.Controls.Add(this._preserveModuleStateCheckBox);
-			panel.Controls.Add(this._refreshButton);
-			panel.Controls.Add(this._syncButton);
-			panel.Controls.Add(this._autoSyncProfileLabel);
+			TableLayoutPanel table = SettingsHelp.CreateScrollTable();
+			SettingsHelp.AddRow(table, SettingsHelp.CreateFlow(this._backupButton, this._openFolderButton));
+			SettingsHelp.AddFullWidthButton(table, this._deleteBackupsButton);
+			SettingsHelp.AddRow(table, this._profileLabel, SettingsHelp.Text.SettingsProfile);
+			SettingsHelp.AddRow(table, this._profileCombo);
+			SettingsHelp.AddRow(table, listLabel);
+			SettingsHelp.AddFixedHeight(table, this._characterList, 110);
+			SettingsHelp.AddRow(table, this._channelLabel, SettingsHelp.Text.ChannelsToKeep);
+			SettingsHelp.AddFixedHeight(table, this._channelList, 150);
+			SettingsHelp.AddRow(table, this._preserveModuleStateCheckBox, SettingsHelp.Text.PreserveModuleLayout);
+			SettingsHelp.AddRow(table, SettingsHelp.CreateFlow(this._refreshButton, this._syncButton));
+			SettingsHelp.AddRow(table, this._statusLabel);
+			SettingsHelp.AddRow(table, this._autoSyncProfileLabel);
+
+			SettingsHelp.HostInScrollPanel(panel, table);
 			this.Controls.Add(panel);
 
 			this.ResumeLayout(false);
+		}
+
+		protected override void OnHandleCreated(EventArgs e)
+		{
+			base.OnHandleCreated(e);
+			this.ApplyScaledButtonSizes();
+		}
+
+		protected override void OnDpiChangedAfterParent(EventArgs e)
+		{
+			base.OnDpiChangedAfterParent(e);
+			this.ApplyScaledButtonSizes();
+		}
+
+		private void ApplyScaledButtonSizes()
+		{
+			SettingsHelp.ApplyScaledButtonSizes(
+				this,
+				this._backupButton,
+				this._openFolderButton,
+				this._deleteBackupsButton,
+				this._refreshButton,
+				this._syncButton);
 		}
 
 		public void SetConfiguration(IThumbnailConfiguration configuration)
@@ -892,13 +875,16 @@ namespace EveFPreview.View
 			this.MaximizeBox = false;
 			this.ShowInTaskbar = false;
 			this.TopMost = true;
-			this.ClientSize = new Size(360, 380);
+			this.AutoScaleMode = AutoScaleMode.Dpi;
+			this.Padding = new Padding(12);
+			this.ClientSize = new Size(400, 420);
 
 			var label = new Label
 			{
-				AutoSize = false,
-				Location = new Point(12, 12),
-				Size = new Size(336, 52),
+				AutoSize = true,
+				Dock = DockStyle.Top,
+				Margin = new Padding(0, 0, 0, 8),
+				Padding = new Padding(0, 0, 0, 8),
 				Text = channelsToKeepCount > 0
 					? $"Copy settings from {source.DisplayName} onto (keeping {channelsToKeepCount} channel(s)):"
 					: $"Copy settings from {source.DisplayName} onto (keeping no player channels):"
@@ -908,9 +894,8 @@ namespace EveFPreview.View
 
 			this._list = new CheckedListBox
 			{
-				Location = new Point(12, 68),
-				Size = new Size(336, 240),
 				CheckOnClick = true,
+				Dock = DockStyle.Fill,
 				IntegralHeight = false
 			};
 
@@ -921,13 +906,8 @@ namespace EveFPreview.View
 				this._list.Items.Add(destination, remembered.Contains(destination.CharacterId));
 			}
 
-			var selectAll = new Button
-			{
-				Text = "Select all",
-				Location = new Point(12, 320),
-				Size = new Size(90, 28),
-				UseVisualStyleBackColor = true
-			};
+			var selectAll = new Button { Text = "Select all" };
+			SettingsHelp.StyleActionButton(this, selectAll);
 			selectAll.Click += (_, __) =>
 			{
 				for (int i = 0; i < this._list.Items.Count; i++)
@@ -939,27 +919,34 @@ namespace EveFPreview.View
 			var ok = new Button
 			{
 				Text = "Sync",
-				DialogResult = DialogResult.OK,
-				Location = new Point(168, 320),
-				Size = new Size(90, 28),
-				UseVisualStyleBackColor = true
+				DialogResult = DialogResult.OK
 			};
+			SettingsHelp.StyleActionButton(this, ok);
 			ok.Click += this.Ok_Click;
 
 			var cancel = new Button
 			{
 				Text = "Cancel",
-				DialogResult = DialogResult.Cancel,
-				Location = new Point(258, 320),
-				Size = new Size(90, 28),
-				UseVisualStyleBackColor = true
+				DialogResult = DialogResult.Cancel
 			};
+			SettingsHelp.StyleActionButton(this, cancel);
 
-			this.Controls.Add(label);
+			var buttons = new FlowLayoutPanel
+			{
+				AutoSize = true,
+				AutoSizeMode = AutoSizeMode.GrowAndShrink,
+				Dock = DockStyle.Bottom,
+				FlowDirection = FlowDirection.LeftToRight,
+				Padding = new Padding(0, 12, 0, 0),
+				WrapContents = false
+			};
+			buttons.Controls.Add(selectAll);
+			buttons.Controls.Add(ok);
+			buttons.Controls.Add(cancel);
+
 			this.Controls.Add(this._list);
-			this.Controls.Add(selectAll);
-			this.Controls.Add(ok);
-			this.Controls.Add(cancel);
+			this.Controls.Add(buttons);
+			this.Controls.Add(label);
 			this.AcceptButton = ok;
 			this.CancelButton = cancel;
 		}

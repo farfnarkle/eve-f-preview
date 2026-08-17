@@ -30,8 +30,7 @@ namespace EveFPreview.View
 			//
 			// ShortcutsSettingsControl
 			//
-			this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
 			this.Controls.Add(this.ScrollPanel);
 			this.Name = "ShortcutsSettingsControl";
 			this.Size = new System.Drawing.Size(400, 300);
