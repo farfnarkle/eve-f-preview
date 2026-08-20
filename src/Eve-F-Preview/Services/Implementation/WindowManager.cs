@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using EveFPreview.Configuration;
 using EveFPreview.Services.Interop;
+using EveFPreview.UI.Hotkeys;
 
 namespace EveFPreview.Services.Implementation
 {
@@ -80,6 +81,19 @@ namespace EveFPreview.Services.Implementation
 			return User32NativeMethods.GetForegroundWindow();
 		}
 
+		/// <summary>
+		/// A plain SetForegroundWindow call silently fails (window stays in the background) unless
+		/// Windows considers the caller "allowed" - e.g. it just processed a RegisterHotKey WM_HOTKEY
+		/// message, which gets an automatic grant. Our mouse-button cycle hotkeys come from a raw
+		/// input hook instead, which gets no such grant, so cycling would update our own highlight/
+		/// active-client tracking but never actually bring the EVE client to the foreground.
+		/// See ForegroundActivator for how the grant is borrowed.
+		/// </summary>
+		private static void ForceSetForegroundWindow(IntPtr handle)
+		{
+			ForegroundActivator.Activate(handle);
+		}
+
 		public void TurnOffAnimation()
 		{
 			var currentAnimationSetup = User32NativeMethods.SystemParametersInfo(User32NativeMethods.SPI_GETANIMATION, (System.Int32)Marshal.SizeOf(typeof(ANIMATIONINFO)), ref _animationParam, 0);
@@ -112,7 +126,7 @@ namespace EveFPreview.Services.Implementation
 #if LINUX
 		private void WindowsActivateWindow(IntPtr handle)
 		{
-			User32NativeMethods.SetForegroundWindow(handle);
+			WindowManager.ForceSetForegroundWindow(handle);
 			User32NativeMethods.SetFocus(handle);
 
 			uint style = User32NativeMethods.GetWindowLong(handle, InteropConstants.GWL_STYLE);
@@ -199,7 +213,7 @@ namespace EveFPreview.Services.Implementation
 #if WINDOWS
 		public void ActivateWindow(IntPtr handle, AnimationStyle animation)
 		{
-			User32NativeMethods.SetForegroundWindow(handle);
+			WindowManager.ForceSetForegroundWindow(handle);
 			User32NativeMethods.SetFocus(handle);
 
 			uint style = User32NativeMethods.GetWindowLong(handle, InteropConstants.GWL_STYLE);

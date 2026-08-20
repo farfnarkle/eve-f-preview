@@ -35,6 +35,11 @@ namespace EveFPreview.Services.Interop
 		[DllImport("user32.dll")]
 		public static extern bool SetForegroundWindow(IntPtr window);
 
+		public const uint KEYEVENTF_KEYUP = 0x0002;
+
+		[DllImport("user32.dll")]
+		public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
 		[DllImport("user32.dll")]
 		public static extern void SetFocus(IntPtr window);
 
