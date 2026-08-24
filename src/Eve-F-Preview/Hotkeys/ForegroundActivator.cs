@@ -37,6 +37,26 @@ namespace EveFPreview.UI.Hotkeys
 				return;
 			}
 
+			// RegisterHotKey ties the hotkey to the calling thread's message queue, and
+			// Application.AddMessageFilter only sees messages pumped by the UI thread's message
+			// loop. Callers can reach us from a background thread (e.g. ThumbnailActivated runs
+			// inside a Task.Run) - registering there would tie the hotkey to a thread that never
+			// pumps messages, silently breaking activation for the rest of the process's lifetime.
+			if (Application.OpenForms.Count > 0)
+			{
+				Form host = Application.OpenForms[0];
+				if (host.InvokeRequired)
+				{
+					host.BeginInvoke(new Action(() => ForegroundActivator.ActivateOnUiThread(handle)));
+					return;
+				}
+			}
+
+			ForegroundActivator.ActivateOnUiThread(handle);
+		}
+
+		private static void ActivateOnUiThread(IntPtr handle)
+		{
 			lock (Sync)
 			{
 				EnsureRegistered();

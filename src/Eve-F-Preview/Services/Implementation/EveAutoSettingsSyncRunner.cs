@@ -34,8 +34,11 @@ namespace EveFPreview.Services
 			}
 
 			int destCount = configuration.AutoSettingsSyncDestinationCharacterIds?.Count ?? 0;
-			int keepCount = configuration.AutoSettingsSyncChannelKeysToKeep?.Count ?? 0;
-			return $"Profile: {configuration.AutoSettingsSyncProfileName}, char {configuration.AutoSettingsSyncSourceCharacterId} → {destCount} destination(s), keep {keepCount} channel(s).";
+			int overrideCount = configuration.AutoSettingsSyncChannelKeysToKeepByDestination?.Count ?? 0;
+			string channelsNote = overrideCount > 0
+				? $"{overrideCount} destination(s) with custom channel selections"
+				: "default channel selection for all destinations";
+			return $"Profile: {configuration.AutoSettingsSyncProfileName}, char {configuration.AutoSettingsSyncSourceCharacterId} → {destCount} destination(s), {channelsNote}.";
 		}
 
 		public static void SaveProfile(
@@ -44,8 +47,7 @@ namespace EveFPreview.Services
 			long sourceCharacterId,
 			long sourceUserId,
 			IEnumerable<long> destinationCharacterIds,
-			IEnumerable<long> destinationUserIds,
-			IEnumerable<string> channelKeysToKeep)
+			IEnumerable<long> destinationUserIds)
 		{
 			configuration.AutoSettingsSyncProfileName = settingsProfileName ?? string.Empty;
 			configuration.AutoSettingsSyncSourceCharacterId = sourceCharacterId;
@@ -58,7 +60,6 @@ namespace EveFPreview.Services
 				.Where(id => id > 0 && id != sourceUserId)
 				.Distinct()
 				.ToList();
-			SaveChannelKeysToKeep(configuration, channelKeysToKeep);
 		}
 
 		public static void SaveChannelKeysToKeep(IThumbnailConfiguration configuration, IEnumerable<string> channelKeysToKeep)
@@ -74,6 +75,34 @@ namespace EveFPreview.Services
 				.ToList();
 			// Clear legacy strip list once keep is authoritative.
 			configuration.AutoSettingsSyncChannelKeysToStrip = new List<string>();
+		}
+
+		/// <summary>Channel keys to keep for one destination character - its own override if set, otherwise the default keep list.</summary>
+		public static IList<string> GetChannelKeysToKeepForDestination(IThumbnailConfiguration configuration, long destinationCharacterId)
+		{
+			if (configuration?.AutoSettingsSyncChannelKeysToKeepByDestination != null
+				&& destinationCharacterId > 0
+				&& configuration.AutoSettingsSyncChannelKeysToKeepByDestination.TryGetValue(destinationCharacterId.ToString(), out List<string> keys))
+			{
+				return keys ?? new List<string>();
+			}
+
+			return configuration?.AutoSettingsSyncChannelKeysToKeep ?? new List<string>();
+		}
+
+		public static void SaveChannelKeysToKeepForDestination(IThumbnailConfiguration configuration, long destinationCharacterId, IEnumerable<string> channelKeysToKeep)
+		{
+			if (configuration == null || destinationCharacterId <= 0)
+			{
+				return;
+			}
+
+			configuration.AutoSettingsSyncChannelKeysToKeepByDestination ??= new Dictionary<string, List<string>>();
+			configuration.AutoSettingsSyncChannelKeysToKeepByDestination[destinationCharacterId.ToString()] =
+				(channelKeysToKeep ?? Array.Empty<string>())
+					.Where(k => !string.IsNullOrWhiteSpace(k))
+					.Distinct(StringComparer.OrdinalIgnoreCase)
+					.ToList();
 		}
 
 		public static void SaveSourceSelection(
@@ -137,13 +166,26 @@ namespace EveFPreview.Services
 				configuration.AutoSettingsSyncSourceUserId = 0;
 			}
 
+			var keepByDest = configuration.AutoSettingsSyncChannelKeysToKeepByDestination;
+			if (keepByDest != null && keepByDest.Count > 0)
+			{
+				List<string> staleKeys = keepByDest.Keys
+					.Where(key => !long.TryParse(key, out long id) || !charIds.Contains(id))
+					.ToList();
+				foreach (string key in staleKeys)
+				{
+					keepByDest.Remove(key);
+				}
+			}
+
 			return removed;
 		}
 
 		/// <summary>
-		/// Resolves channel keys to strip from the keep list (or legacy strip list if keep was never set).
+		/// Resolves channel keys to strip for one destination, from its own keep override (or the
+		/// default keep list), falling back to the legacy strip list only if keep was never set at all.
 		/// </summary>
-		public static IList<string> ResolveChannelKeysToStrip(IThumbnailConfiguration configuration)
+		public static IList<string> ResolveChannelKeysToStripForDestination(IThumbnailConfiguration configuration, long destinationCharacterId)
 		{
 			if (configuration == null || configuration.AutoSettingsSyncSourceCharacterId <= 0)
 			{
@@ -152,15 +194,18 @@ namespace EveFPreview.Services
 
 			bool hasKeep = configuration.AutoSettingsSyncChannelKeysToKeep != null
 				&& configuration.AutoSettingsSyncChannelKeysToKeep.Count > 0;
+			bool hasDestinationOverride = configuration.AutoSettingsSyncChannelKeysToKeepByDestination != null
+				&& destinationCharacterId > 0
+				&& configuration.AutoSettingsSyncChannelKeysToKeepByDestination.ContainsKey(destinationCharacterId.ToString());
 			bool hasLegacyStrip = configuration.AutoSettingsSyncChannelKeysToStrip != null
 				&& configuration.AutoSettingsSyncChannelKeysToStrip.Count > 0;
 
 			// Prefer keep model. Empty keep + no legacy strip => strip all player channels.
-			if (hasKeep || !hasLegacyStrip)
+			if (hasKeep || hasDestinationOverride || !hasLegacyStrip)
 			{
 				return EveChatChannelTools.ResolveKeysToStrip(
 					configuration.AutoSettingsSyncSourceCharacterId,
-					configuration.AutoSettingsSyncChannelKeysToKeep ?? new List<string>(),
+					GetChannelKeysToKeepForDestination(configuration, destinationCharacterId),
 					configuration.AutoSettingsSyncProfileName);
 			}
 
@@ -199,20 +244,40 @@ namespace EveFPreview.Services
 				return null;
 			}
 
-			var options = new EveSettingsSyncOptions
-			{
-				SourceCharacterId = configuration.AutoSettingsSyncSourceCharacterId,
-				SourceUserId = configuration.AutoSettingsSyncSourceUserId,
-				SourceCharacterName = ResolveSourceCharacterName(configuration),
-				DestinationCharacterIds = configuration.AutoSettingsSyncDestinationCharacterIds.ToList(),
-				DestinationUserIds = (configuration.AutoSettingsSyncDestinationUserIds ?? new List<long>()).ToList(),
-				ChannelKeysToStrip = ResolveChannelKeysToStrip(configuration),
-				ProfileName = configuration.AutoSettingsSyncProfileName,
-				PreserveModuleState = configuration.PreserveShipModuleStateOnSync,
-				Mode = EveSettingsSyncMode.Copy
-			};
+			// Each destination can keep a different set of channels, so sync one destination per run
+			// instead of batching them all under one shared ChannelKeysToStrip. Several characters
+			// can share the same EVE account, though - only sync each account's core_user once per
+			// run, or a repeat pass re-backs-up the same file within the same second and collides
+			// with the first pass's timestamped backup name.
+			string sourceName = ResolveSourceCharacterName(configuration);
+			var report = new EveSettingsSyncReport();
+			var accountsAlreadySynced = new HashSet<long>();
 
-			EveSettingsSyncReport report = new EveSettingsSync(options).Run();
+			foreach (long destinationCharacterId in configuration.AutoSettingsSyncDestinationCharacterIds)
+			{
+				configuration.TryGetAccountIdForCharacter((int)destinationCharacterId, out int destinationAccountId);
+				bool syncAccountThisPass = destinationAccountId > 0 && accountsAlreadySynced.Add(destinationAccountId);
+
+				var options = new EveSettingsSyncOptions
+				{
+					SourceCharacterId = configuration.AutoSettingsSyncSourceCharacterId,
+					SourceUserId = configuration.AutoSettingsSyncSourceUserId,
+					SourceCharacterName = sourceName,
+					DestinationCharacterIds = new List<long> { destinationCharacterId },
+					DestinationUserIds = syncAccountThisPass ? new List<long> { destinationAccountId } : new List<long>(),
+					ChannelKeysToStrip = ResolveChannelKeysToStripForDestination(configuration, destinationCharacterId),
+					ProfileName = configuration.AutoSettingsSyncProfileName,
+					PreserveModuleState = configuration.PreserveShipModuleStateOnSync,
+					Mode = EveSettingsSyncMode.Copy
+				};
+
+				EveSettingsSyncReport destinationReport = new EveSettingsSync(options).Run();
+				report.Actions.AddRange(destinationReport.Actions);
+				report.Warnings.AddRange(destinationReport.Warnings);
+				report.FilesSynced += destinationReport.FilesSynced;
+				report.FilesBackedUp += destinationReport.FilesBackedUp;
+			}
+
 			AppendLog(reason, report, null);
 			return report;
 		}

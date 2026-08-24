@@ -18,12 +18,9 @@ namespace EveFPreview.View
 
 		public override string ToString()
 		{
-			if (this.AccountId > 0)
-			{
-				return $"{this.DisplayName}  (char {this.CharacterId}, acct {this.AccountId})";
-			}
-
-			return $"{this.DisplayName}  (char {this.CharacterId}, acct unknown)";
+			return this.AccountId > 0
+				? $"{this.DisplayName}  (char {this.CharacterId}, acct {this.AccountId})"
+				: $"{this.DisplayName}  (char {this.CharacterId}, acct unknown - right-click to set)";
 		}
 	}
 
@@ -37,7 +34,9 @@ namespace EveFPreview.View
 		private readonly ComboBox _profileCombo;
 		private readonly Button _refreshButton;
 		private readonly Button _syncButton;
-		private readonly ListBox _characterList;
+		private readonly ComboBox _sourceCombo;
+		private readonly Button _setSourceAccountIdButton;
+		private readonly CheckedListBox _destinationList;
 		private readonly CheckedListBox _channelList;
 		private readonly Label _channelLabel;
 		private readonly CheckBox _preserveModuleStateCheckBox;
@@ -91,17 +90,47 @@ namespace EveFPreview.View
 			};
 			this._profileCombo.SelectedIndexChanged += this.ProfileCombo_SelectedIndexChanged;
 
-			var listLabel = new Label
+			var sourceLabel = new Label
 			{
 				AutoSize = true,
 				Text = "Source character"
 			};
 
-			this._characterList = new ListBox
+			this._sourceCombo = new ComboBox
 			{
-				IntegralHeight = false
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Width = 260
 			};
-			this._characterList.SelectedIndexChanged += this.CharacterList_SelectedIndexChanged;
+			this._sourceCombo.SelectedIndexChanged += this.SourceCombo_SelectedIndexChanged;
+
+			this._setSourceAccountIdButton = new Button
+			{
+				Text = "Set account ID…"
+			};
+			this._setSourceAccountIdButton.Click += this.SetSourceAccountIdButton_Click;
+
+			var destinationLabel = new Label
+			{
+				AutoSize = true,
+				Text = "Destination characters"
+			};
+
+			this._destinationList = new CheckedListBox
+			{
+				IntegralHeight = false,
+				// Deliberately not CheckOnClick: clicking a row selects it to edit its channel
+				// list below without also toggling whether it's included in the sync. The
+				// checkbox itself still toggles on click (or Space) as usual.
+				CheckOnClick = false
+			};
+			this._destinationList.ItemCheck += this.DestinationList_ItemCheck;
+			this._destinationList.SelectedIndexChanged += this.DestinationList_SelectedIndexChanged;
+			this._destinationList.MouseDown += this.DestinationList_MouseDown;
+
+			var setDestinationAccountIdMenuItem = new ToolStripMenuItem("Set account ID…");
+			setDestinationAccountIdMenuItem.Click += this.SetDestinationAccountIdMenuItem_Click;
+			this._destinationList.ContextMenuStrip = new ContextMenuStrip();
+			this._destinationList.ContextMenuStrip.Items.Add(setDestinationAccountIdMenuItem);
 
 			this._channelLabel = new Label
 			{
@@ -155,14 +184,14 @@ namespace EveFPreview.View
 			SettingsHelp.AddFullWidthButton(table, this._deleteBackupsButton);
 			SettingsHelp.AddRow(table, this._profileLabel, SettingsHelp.Text.SettingsProfile);
 			SettingsHelp.AddRow(table, this._profileCombo);
-			SettingsHelp.AddRow(table, listLabel);
-			SettingsHelp.AddFixedHeight(table, this._characterList, 110);
+			SettingsHelp.AddRow(table, sourceLabel, SettingsHelp.Text.SourceCharacter);
+			SettingsHelp.AddRow(table, SettingsHelp.CreateFlow(this._sourceCombo, this._setSourceAccountIdButton));
+			SettingsHelp.AddRow(table, destinationLabel, SettingsHelp.Text.DestinationCharacters);
+			SettingsHelp.AddFixedHeight(table, this._destinationList, 110);
 			SettingsHelp.AddRow(table, this._channelLabel, SettingsHelp.Text.ChannelsToKeep);
-			SettingsHelp.AddFixedHeight(table, this._channelList, 150);
+			SettingsHelp.AddFixedHeight(table, this._channelList, 130);
 			SettingsHelp.AddRow(table, this._preserveModuleStateCheckBox, SettingsHelp.Text.PreserveModuleLayout);
 			SettingsHelp.AddRow(table, SettingsHelp.CreateFlow(this._refreshButton, this._syncButton));
-			SettingsHelp.AddRow(table, this._statusLabel);
-			SettingsHelp.AddRow(table, this._autoSyncProfileLabel);
 
 			SettingsHelp.HostInScrollPanel(panel, table);
 			this.Controls.Add(panel);
@@ -189,6 +218,7 @@ namespace EveFPreview.View
 				this._backupButton,
 				this._openFolderButton,
 				this._deleteBackupsButton,
+				this._setSourceAccountIdButton,
 				this._refreshButton,
 				this._syncButton);
 		}
@@ -322,14 +352,15 @@ namespace EveFPreview.View
 			try
 			{
 				string profile = this.SelectedProfileName;
-				long preferredId = this._configuration?.AutoSettingsSyncSourceCharacterId ?? 0;
+				long preferredSourceId = this._configuration?.AutoSettingsSyncSourceCharacterId ?? 0;
 
 				this._characters.Clear();
-				this._characterList.Items.Clear();
+				this._sourceCombo.Items.Clear();
 
 				if (string.IsNullOrEmpty(profile))
 				{
-					this.LoadChannelsForCharacter(null);
+					this.RefreshDestinationList();
+					this.LoadChannelsForSelectedDestination();
 					this._statusLabel.Text = "No EVE settings profiles found under LocalAppData\\CCP\\EVE.";
 					this.UpdateSyncEnabled();
 					return;
@@ -351,43 +382,38 @@ namespace EveFPreview.View
 					});
 				}
 
-				this._characters.Sort((a, b) =>
-				{
-					int preferred = (b.CharacterId == preferredId).CompareTo(a.CharacterId == preferredId);
-					if (preferred != 0)
-					{
-						return preferred;
-					}
-
-					return string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase);
-				});
+				this._characters.Sort((a, b) => string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase));
 
 				foreach (SettingsSyncCharacterEntry character in this._characters)
 				{
-					this._characterList.Items.Add(character);
+					this._sourceCombo.Items.Add(character);
 				}
 
-				int selectedIndex = -1;
-				if (preferredId > 0)
+				int sourceIndex = -1;
+				if (preferredSourceId > 0)
 				{
-					for (int i = 0; i < this._characterList.Items.Count; i++)
+					for (int i = 0; i < this._sourceCombo.Items.Count; i++)
 					{
-						if (((SettingsSyncCharacterEntry)this._characterList.Items[i]).CharacterId == preferredId)
+						if (((SettingsSyncCharacterEntry)this._sourceCombo.Items[i]).CharacterId == preferredSourceId)
 						{
-							selectedIndex = i;
+							sourceIndex = i;
 							break;
 						}
 					}
 				}
 
-				if (selectedIndex >= 0)
+				if (sourceIndex < 0 && this._sourceCombo.Items.Count > 0)
 				{
-					this._characterList.SelectedIndex = selectedIndex;
+					sourceIndex = 0;
 				}
-				else
+
+				if (sourceIndex >= 0)
 				{
-					this.LoadChannelsForCharacter(null);
+					this._sourceCombo.SelectedIndex = sourceIndex;
 				}
+
+				this.RefreshDestinationList();
+				this.LoadChannelsForSelectedDestination();
 
 				int pruned = 0;
 				if (this._configuration != null)
@@ -396,6 +422,7 @@ namespace EveFPreview.View
 					if (pruned > 0)
 					{
 						this.PersistConfiguration?.Invoke();
+						this.RefreshDestinationList();
 					}
 				}
 
@@ -403,7 +430,7 @@ namespace EveFPreview.View
 					? $"No characters in {profile}. Log those clients in on this settings profile once."
 					: $"{this._characters.Count} character(s) in {profile}."
 					  + (pruned > 0 ? $" Removed {pruned} missing destination(s)." : "")
-					  + " Checked channels are kept; unchecked are stripped.";
+					  + " Check a destination to include it in Sync; click one to edit its kept channels.";
 				this.UpdateAutoSyncProfileLabel();
 				this.UpdateSyncEnabled();
 			}
@@ -434,12 +461,13 @@ namespace EveFPreview.View
 			return names;
 		}
 
-		private void CharacterList_SelectedIndexChanged(object sender, EventArgs e)
+		private void SourceCombo_SelectedIndexChanged(object sender, EventArgs e)
 		{
-			var selected = this._characterList.SelectedItem as SettingsSyncCharacterEntry;
-			this.LoadChannelsForCharacter(selected);
+			this.RefreshDestinationList();
+			this.LoadChannelsForSelectedDestination();
 			this.UpdateSyncEnabled();
 
+			var selected = this._sourceCombo.SelectedItem as SettingsSyncCharacterEntry;
 			if (!this._suppressPersist && selected != null && selected.CharacterId > 0 && this._configuration != null)
 			{
 				EveAutoSettingsSyncRunner.SaveSourceSelection(
@@ -450,6 +478,160 @@ namespace EveFPreview.View
 				this.PersistConfiguration?.Invoke();
 				this.UpdateAutoSyncProfileLabel();
 			}
+		}
+
+		private void SetSourceAccountIdButton_Click(object sender, EventArgs e)
+		{
+			if (!(this._sourceCombo.SelectedItem is SettingsSyncCharacterEntry selected) || this._configuration == null)
+			{
+				return;
+			}
+
+			using (var dialog = new SettingsSyncAccountIdDialog(selected.DisplayName, selected.AccountId))
+			{
+				if (dialog.ShowDialog(this) != DialogResult.OK)
+				{
+					return;
+				}
+
+				this._configuration.SetCharacterAccount((int)selected.CharacterId, dialog.AccountId);
+				this.PersistConfiguration?.Invoke();
+				this.RefreshCharacterList();
+			}
+		}
+
+		/// <summary>Rebuilds the destination checklist from the current character set, excluding the selected source, preserving check state and the currently-edited selection where possible.</summary>
+		private void RefreshDestinationList()
+		{
+			var selectedSource = this._sourceCombo.SelectedItem as SettingsSyncCharacterEntry;
+			var configuredDestinationIds = new HashSet<long>(this._configuration?.AutoSettingsSyncDestinationCharacterIds ?? new List<long>());
+			var previouslyEditingDestination = this._destinationList.SelectedItem as SettingsSyncCharacterEntry;
+
+			bool wasSuppressed = this._suppressPersist;
+			this._suppressPersist = true;
+			try
+			{
+				this._destinationList.Items.Clear();
+
+				foreach (SettingsSyncCharacterEntry character in this._characters)
+				{
+					if (selectedSource != null && character.CharacterId == selectedSource.CharacterId)
+					{
+						continue;
+					}
+
+					bool isDestination = configuredDestinationIds.Contains(character.CharacterId);
+					this._destinationList.Items.Add(character, isDestination);
+				}
+
+				int restoreIndex = -1;
+				if (previouslyEditingDestination != null)
+				{
+					for (int i = 0; i < this._destinationList.Items.Count; i++)
+					{
+						if (((SettingsSyncCharacterEntry)this._destinationList.Items[i]).CharacterId == previouslyEditingDestination.CharacterId)
+						{
+							restoreIndex = i;
+							break;
+						}
+					}
+				}
+
+				if (restoreIndex < 0)
+				{
+					for (int i = 0; i < this._destinationList.Items.Count; i++)
+					{
+						if (this._destinationList.GetItemChecked(i))
+						{
+							restoreIndex = i;
+							break;
+						}
+					}
+				}
+
+				this._destinationList.SelectedIndex = restoreIndex;
+			}
+			finally
+			{
+				this._suppressPersist = wasSuppressed;
+			}
+		}
+
+		// Right-clicking a non-selected row should select it before the context menu opens,
+		// matching standard Windows list behavior (ListBox/CheckedListBox does not do this itself).
+		private void DestinationList_MouseDown(object sender, MouseEventArgs e)
+		{
+			if (e.Button != MouseButtons.Right)
+			{
+				return;
+			}
+
+			int index = this._destinationList.IndexFromPoint(e.Location);
+			if (index >= 0)
+			{
+				this._destinationList.SelectedIndex = index;
+			}
+		}
+
+		private void SetDestinationAccountIdMenuItem_Click(object sender, EventArgs e)
+		{
+			if (!(this._destinationList.SelectedItem is SettingsSyncCharacterEntry selected) || this._configuration == null)
+			{
+				return;
+			}
+
+			using (var dialog = new SettingsSyncAccountIdDialog(selected.DisplayName, selected.AccountId))
+			{
+				if (dialog.ShowDialog(this) != DialogResult.OK)
+				{
+					return;
+				}
+
+				this._configuration.SetCharacterAccount((int)selected.CharacterId, dialog.AccountId);
+				this.PersistConfiguration?.Invoke();
+				this.RefreshCharacterList();
+			}
+		}
+
+		private void DestinationList_ItemCheck(object sender, ItemCheckEventArgs e)
+		{
+			if (this._suppressPersist)
+			{
+				return;
+			}
+
+			this.BeginInvoke(new Action(this.PersistDestinationSelection));
+		}
+
+		private void PersistDestinationSelection()
+		{
+			if (this._suppressPersist || this._configuration == null)
+			{
+				return;
+			}
+
+			List<SettingsSyncCharacterEntry> checkedDestinations = this._destinationList.CheckedItems
+				.Cast<SettingsSyncCharacterEntry>()
+				.ToList();
+
+			this._configuration.AutoSettingsSyncDestinationCharacterIds = checkedDestinations
+				.Select(d => d.CharacterId)
+				.Distinct()
+				.ToList();
+			this._configuration.AutoSettingsSyncDestinationUserIds = checkedDestinations
+				.Where(d => d.AccountId > 0)
+				.Select(d => d.AccountId)
+				.Distinct()
+				.ToList();
+
+			this.PersistConfiguration?.Invoke();
+			this.UpdateAutoSyncProfileLabel();
+			this.UpdateSyncEnabled();
+		}
+
+		private void DestinationList_SelectedIndexChanged(object sender, EventArgs e)
+		{
+			this.LoadChannelsForSelectedDestination();
 		}
 
 		private void ChannelList_ItemCheck(object sender, ItemCheckEventArgs e)
@@ -469,28 +651,50 @@ namespace EveFPreview.View
 				return;
 			}
 
-			EveAutoSettingsSyncRunner.SaveChannelKeysToKeep(this._configuration, this.GetSelectedChannelKeysToKeep());
+			var destination = this._destinationList.SelectedItem as SettingsSyncCharacterEntry;
+			if (destination == null)
+			{
+				return;
+			}
+
+			EveAutoSettingsSyncRunner.SaveChannelKeysToKeepForDestination(
+				this._configuration, destination.CharacterId, this.GetSelectedChannelKeysToKeep());
 			this.PersistConfiguration?.Invoke();
 			this.UpdateAutoSyncProfileLabel();
 		}
 
-		private void LoadChannelsForCharacter(SettingsSyncCharacterEntry character)
+		/// <summary>
+		/// Channel names always come from the source character (whose core_char is what actually
+		/// gets copied); which ones are checked comes from the selected destination's own keep list
+		/// (or the shared default if that destination has no override yet).
+		/// </summary>
+		private void LoadChannelsForSelectedDestination()
 		{
+			bool wasSuppressed = this._suppressPersist;
 			this._suppressPersist = true;
 			try
 			{
 				this._channelList.Items.Clear();
-				if (character == null || character.CharacterId <= 0)
+
+				var source = this._sourceCombo.SelectedItem as SettingsSyncCharacterEntry;
+				if (source == null || source.CharacterId <= 0)
 				{
 					this._channelLabel.Text = "Channels to keep on copy";
 					return;
 				}
 
+				var destination = this._destinationList.SelectedItem as SettingsSyncCharacterEntry;
+				if (destination == null)
+				{
+					this._channelLabel.Text = "Channels to keep (select a destination below)";
+					return;
+				}
+
 				string path = EveChatChannelTools.FindNewestCoreCharPath(
-					character.CharacterId, profileName: this.SelectedProfileName);
+					source.CharacterId, profileName: this.SelectedProfileName);
 				if (string.IsNullOrEmpty(path))
 				{
-					this._channelLabel.Text = "Channels to keep (no core_char file found)";
+					this._channelLabel.Text = "Channels to keep (no core_char file found for source)";
 					return;
 				}
 
@@ -502,10 +706,13 @@ namespace EveFPreview.View
 						.ToList();
 
 					this._channelLabel.Text = channels.Count == 0
-						? "Channels to keep (none / only builtins)"
-						: $"Channels to keep on copy ({channels.Count})";
+						? $"Channels to keep for {destination.DisplayName} (none / only builtins)"
+						: $"Channels to keep for {destination.DisplayName} ({channels.Count})";
 
-					HashSet<string> keepKeys = this.ResolveKeepKeysForUi(channels);
+					HashSet<string> keepKeys = new HashSet<string>(
+						EveAutoSettingsSyncRunner.GetChannelKeysToKeepForDestination(this._configuration, destination.CharacterId),
+						StringComparer.OrdinalIgnoreCase);
+
 					foreach (EveChatChannelInfo channel in channels)
 					{
 						bool keep = !string.IsNullOrEmpty(channel.Key) && keepKeys.Contains(channel.Key);
@@ -520,46 +727,8 @@ namespace EveFPreview.View
 			}
 			finally
 			{
-				this._suppressPersist = false;
+				this._suppressPersist = wasSuppressed;
 			}
-		}
-
-		private HashSet<string> ResolveKeepKeysForUi(IList<EveChatChannelInfo> channels)
-		{
-			var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-			if (this._configuration == null)
-			{
-				return keep;
-			}
-
-			IList<string> savedKeep = this._configuration.AutoSettingsSyncChannelKeysToKeep ?? new List<string>();
-			IList<string> legacyStrip = this._configuration.AutoSettingsSyncChannelKeysToStrip ?? new List<string>();
-
-			if (savedKeep.Count > 0 || legacyStrip.Count == 0)
-			{
-				foreach (string key in savedKeep)
-				{
-					if (!string.IsNullOrEmpty(key))
-					{
-						keep.Add(key);
-					}
-				}
-
-				return keep;
-			}
-
-			var strip = new HashSet<string>(legacyStrip.Where(k => !string.IsNullOrEmpty(k)), StringComparer.OrdinalIgnoreCase);
-			foreach (EveChatChannelInfo channel in channels)
-			{
-				if (!string.IsNullOrEmpty(channel.Key) && !strip.Contains(channel.Key))
-				{
-					keep.Add(channel.Key);
-				}
-			}
-
-			EveAutoSettingsSyncRunner.SaveChannelKeysToKeep(this._configuration, keep);
-			this.PersistConfiguration?.Invoke();
-			return keep;
 		}
 
 		private IList<string> GetSelectedChannelKeysToKeep()
@@ -578,11 +747,13 @@ namespace EveFPreview.View
 
 		private void UpdateSyncEnabled()
 		{
-			var selected = this._characterList.SelectedItem as SettingsSyncCharacterEntry;
+			var source = this._sourceCombo.SelectedItem as SettingsSyncCharacterEntry;
+			bool hasDestination = this._destinationList.CheckedItems.Count > 0;
 			this._syncButton.Enabled = !string.IsNullOrEmpty(this.SelectedProfileName)
-				&& selected != null
-				&& selected.CharacterId > 0
-				&& selected.AccountId > 0;
+				&& source != null
+				&& source.CharacterId > 0
+				&& source.AccountId > 0
+				&& hasDestination;
 		}
 
 		private void OpenFolderButton_Click(object sender, EventArgs e)
@@ -703,7 +874,7 @@ namespace EveFPreview.View
 		{
 			IWin32Window owner = this.GetDialogOwner();
 			string profile = this.SelectedProfileName;
-			var source = this._characterList.SelectedItem as SettingsSyncCharacterEntry;
+			var source = this._sourceCombo.SelectedItem as SettingsSyncCharacterEntry;
 			if (source == null || string.IsNullOrEmpty(profile))
 			{
 				return;
@@ -712,10 +883,21 @@ namespace EveFPreview.View
 			if (source.AccountId <= 0)
 			{
 				MessageBox.Show(owner,
-					"This character has no known account ID yet. Log that client in once with account-based positioning enabled so the map can be recorded.",
+					"This character has no known account ID yet. Right-click it to set one, or log that client in once so it can be detected automatically.",
 					"Settings Sync",
 					MessageBoxButtons.OK,
 					MessageBoxIcon.Information);
+				return;
+			}
+
+			List<SettingsSyncCharacterEntry> destinations = this._destinationList.CheckedItems
+				.Cast<SettingsSyncCharacterEntry>()
+				.ToList();
+
+			if (destinations.Count == 0)
+			{
+				MessageBox.Show(owner, "Check at least one destination character below.", "Settings Sync",
+					MessageBoxButtons.OK, MessageBoxIcon.Information);
 				return;
 			}
 
@@ -729,80 +911,71 @@ namespace EveFPreview.View
 				return;
 			}
 
-			List<SettingsSyncCharacterEntry> destinations = this._characters
-				.Where(c => c.CharacterId != source.CharacterId)
-				.ToList();
-
-			if (destinations.Count == 0)
+			var missingAccount = destinations.Where(d => d.AccountId <= 0).ToList();
+			if (missingAccount.Count > 0)
 			{
-				MessageBox.Show(owner, "No other characters available as destinations in this profile.", "Settings Sync",
-					MessageBoxButtons.OK, MessageBoxIcon.Information);
-				return;
+				MessageBox.Show(owner,
+					"These destinations have no account ID and cannot receive account (core_user) settings:\n\n" +
+					string.Join("\n", missingAccount.Select(d => d.DisplayName)),
+					"Settings Sync",
+					MessageBoxButtons.OK,
+					MessageBoxIcon.Warning);
 			}
 
-			IList<string> channelsToKeep = this.GetSelectedChannelKeysToKeep();
-			IList<string> channelsToStrip = EveChatChannelTools.ResolveKeysToStrip(
-				source.CharacterId, channelsToKeep, profile);
+			// Each destination keeps its own channel selection, so sync one destination at a time
+			// instead of batching them all under one shared set of channels to strip. Several
+			// characters can share the same EVE account, though - only sync each account's
+			// core_user once per click, or the second pass re-backs-up the same file within the
+			// same second and collides with the first pass's timestamped backup name.
+			var aggregate = new EveSettingsSyncReport();
+			var accountsAlreadySynced = new HashSet<long>();
 
-			using (var dialog = new SettingsSyncDestinationDialog(
-				source,
-				destinations,
-				channelsToKeep.Count,
-				this._configuration?.AutoSettingsSyncDestinationCharacterIds))
+			foreach (SettingsSyncCharacterEntry destination in destinations)
 			{
-				if (dialog.ShowDialog(owner) != DialogResult.OK)
-				{
-					return;
-				}
+				IList<string> channelsToKeep = EveAutoSettingsSyncRunner.GetChannelKeysToKeepForDestination(this._configuration, destination.CharacterId);
+				IList<string> channelsToStrip = EveChatChannelTools.ResolveKeysToStrip(source.CharacterId, channelsToKeep, profile);
 
-				List<SettingsSyncCharacterEntry> selectedDestinations = dialog.SelectedDestinations;
-				if (selectedDestinations.Count == 0)
-				{
-					return;
-				}
-
-				var missingAccount = selectedDestinations.Where(d => d.AccountId <= 0).ToList();
-				if (missingAccount.Count > 0)
-				{
-					MessageBox.Show(owner,
-						"These destinations have no account ID and cannot receive account (core_user) settings:\n\n" +
-						string.Join("\n", missingAccount.Select(d => d.DisplayName)),
-						"Settings Sync",
-						MessageBoxButtons.OK,
-						MessageBoxIcon.Warning);
-				}
+				bool syncAccountThisPass = destination.AccountId > 0 && accountsAlreadySynced.Add(destination.AccountId);
 
 				var options = new EveSettingsSyncOptions
 				{
 					SourceCharacterId = source.CharacterId,
 					SourceUserId = source.AccountId,
 					SourceCharacterName = source.DisplayName,
-					DestinationCharacterIds = selectedDestinations.Select(d => d.CharacterId).ToList(),
-					DestinationUserIds = selectedDestinations.Where(d => d.AccountId > 0).Select(d => d.AccountId).Distinct().ToList(),
+					DestinationCharacterIds = new List<long> { destination.CharacterId },
+					DestinationUserIds = syncAccountThisPass ? new List<long> { destination.AccountId } : new List<long>(),
 					ChannelKeysToStrip = channelsToStrip,
 					ProfileName = profile,
 					PreserveModuleState = this._preserveModuleStateCheckBox.Checked,
 					Mode = EveSettingsSyncMode.Copy
 				};
 
-				EveSettingsSyncReport report = new EveSettingsSync(options).Run();
+				EveSettingsSyncReport destinationReport = new EveSettingsSync(options).Run();
+				aggregate.Actions.AddRange(destinationReport.Actions);
+				aggregate.Warnings.AddRange(destinationReport.Warnings);
+				aggregate.FilesSynced += destinationReport.FilesSynced;
+				aggregate.FilesBackedUp += destinationReport.FilesBackedUp;
 
-				if (this._configuration != null && report.FilesSynced > 0)
+				if (this._configuration != null)
 				{
-					EveAutoSettingsSyncRunner.SaveProfile(
-						this._configuration,
-						profile,
-						options.SourceCharacterId,
-						options.SourceUserId,
-						options.DestinationCharacterIds,
-						options.DestinationUserIds,
-						channelsToKeep);
-					this.PersistConfiguration?.Invoke();
-					this.UpdateAutoSyncProfileLabel();
+					EveAutoSettingsSyncRunner.SaveChannelKeysToKeepForDestination(this._configuration, destination.CharacterId, channelsToKeep);
 				}
-
-				this.ShowReport("Sync complete", report);
 			}
+
+			if (this._configuration != null && aggregate.FilesSynced > 0)
+			{
+				EveAutoSettingsSyncRunner.SaveProfile(
+					this._configuration,
+					profile,
+					source.CharacterId,
+					source.AccountId,
+					destinations.Select(d => d.CharacterId),
+					destinations.Where(d => d.AccountId > 0).Select(d => d.AccountId));
+				this.PersistConfiguration?.Invoke();
+				this.UpdateAutoSyncProfileLabel();
+			}
+
+			this.ShowReport("Sync complete", aggregate);
 		}
 
 		private void ShowReport(string title, EveSettingsSyncReport report)
@@ -856,19 +1029,20 @@ namespace EveFPreview.View
 		}
 	}
 
-	sealed class SettingsSyncDestinationDialog : Form
+	/// <summary>
+	/// Manual fallback for when auto-detection (reading /LauncherData= off the running client's
+	/// command line) can't find a character's account ID - e.g. it was launched via a quick-login
+	/// shortcut that only passes /autoSelectCharacter:, with no account info in the command line.
+	/// </summary>
+	sealed class SettingsSyncAccountIdDialog : Form
 	{
-		private readonly CheckedListBox _list;
+		private readonly NumericUpDown _accountIdInput;
 
-		public List<SettingsSyncCharacterEntry> SelectedDestinations { get; private set; } = new List<SettingsSyncCharacterEntry>();
+		public int AccountId { get; private set; }
 
-		public SettingsSyncDestinationDialog(
-			SettingsSyncCharacterEntry source,
-			IList<SettingsSyncCharacterEntry> destinations,
-			int channelsToKeepCount,
-			IList<long> rememberedDestinationIds = null)
+		public SettingsSyncAccountIdDialog(string characterDisplayName, long currentAccountId)
 		{
-			this.Text = "Sync destinations";
+			this.Text = "Set account ID";
 			this.FormBorderStyle = FormBorderStyle.FixedDialog;
 			this.StartPosition = FormStartPosition.CenterParent;
 			this.MinimizeBox = false;
@@ -877,7 +1051,7 @@ namespace EveFPreview.View
 			this.TopMost = true;
 			this.AutoScaleMode = AutoScaleMode.Dpi;
 			this.Padding = new Padding(12);
-			this.ClientSize = new Size(400, 420);
+			this.ClientSize = new Size(340, 130);
 
 			var label = new Label
 			{
@@ -885,40 +1059,20 @@ namespace EveFPreview.View
 				Dock = DockStyle.Top,
 				Margin = new Padding(0, 0, 0, 8),
 				Padding = new Padding(0, 0, 0, 8),
-				Text = channelsToKeepCount > 0
-					? $"Copy settings from {source.DisplayName} onto (keeping {channelsToKeepCount} channel(s)):"
-					: $"Copy settings from {source.DisplayName} onto (keeping no player channels):"
+				Text = $"Account ID for {characterDisplayName}:\n(shown in the EVE Launcher's account list, or Task Manager's command line for a running client)"
 			};
 
-			var remembered = new HashSet<long>(rememberedDestinationIds ?? Array.Empty<long>());
-
-			this._list = new CheckedListBox
+			this._accountIdInput = new NumericUpDown
 			{
-				CheckOnClick = true,
-				Dock = DockStyle.Fill,
-				IntegralHeight = false
-			};
-
-			foreach (SettingsSyncCharacterEntry destination in destinations
-				.OrderByDescending(d => remembered.Contains(d.CharacterId))
-				.ThenBy(d => d.DisplayName, StringComparer.OrdinalIgnoreCase))
-			{
-				this._list.Items.Add(destination, remembered.Contains(destination.CharacterId));
-			}
-
-			var selectAll = new Button { Text = "Select all" };
-			SettingsHelp.StyleActionButton(this, selectAll);
-			selectAll.Click += (_, __) =>
-			{
-				for (int i = 0; i < this._list.Items.Count; i++)
-				{
-					this._list.SetItemChecked(i, true);
-				}
+				Dock = DockStyle.Top,
+				Maximum = int.MaxValue,
+				Minimum = 0,
+				Value = currentAccountId > 0 ? Math.Min(currentAccountId, int.MaxValue) : 0
 			};
 
 			var ok = new Button
 			{
-				Text = "Sync",
+				Text = "Save",
 				DialogResult = DialogResult.OK
 			};
 			SettingsHelp.StyleActionButton(this, ok);
@@ -940,11 +1094,10 @@ namespace EveFPreview.View
 				Padding = new Padding(0, 12, 0, 0),
 				WrapContents = false
 			};
-			buttons.Controls.Add(selectAll);
 			buttons.Controls.Add(ok);
 			buttons.Controls.Add(cancel);
 
-			this.Controls.Add(this._list);
+			this.Controls.Add(this._accountIdInput);
 			this.Controls.Add(buttons);
 			this.Controls.Add(label);
 			this.AcceptButton = ok;
@@ -953,16 +1106,7 @@ namespace EveFPreview.View
 
 		private void Ok_Click(object sender, EventArgs e)
 		{
-			this.SelectedDestinations = this._list.CheckedItems
-				.Cast<SettingsSyncCharacterEntry>()
-				.ToList();
-
-			if (this.SelectedDestinations.Count == 0)
-			{
-				MessageBox.Show(this, "Select at least one destination character.", "Settings Sync",
-					MessageBoxButtons.OK, MessageBoxIcon.Information);
-				this.DialogResult = DialogResult.None;
-			}
+			this.AccountId = (int)this._accountIdInput.Value;
 		}
 
 		protected override void OnShown(EventArgs e)

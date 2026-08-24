@@ -57,8 +57,10 @@ namespace EveFPreview.Configuration
 		long AutoSettingsSyncSourceUserId { get; set; }
 		List<long> AutoSettingsSyncDestinationCharacterIds { get; set; }
 		List<long> AutoSettingsSyncDestinationUserIds { get; set; }
-		/// <summary>Player chat channel keys to keep when syncing core_char (others are stripped).</summary>
+		/// <summary>Default player chat channel keys to keep when syncing core_char (others are stripped). Used for any destination with no entry in AutoSettingsSyncChannelKeysToKeepByDestination.</summary>
 		List<string> AutoSettingsSyncChannelKeysToKeep { get; set; }
+		/// <summary>Per-destination override of which channel keys to keep, keyed by destination character ID (as a string). Falls back to AutoSettingsSyncChannelKeysToKeep when a destination has no entry.</summary>
+		Dictionary<string, List<string>> AutoSettingsSyncChannelKeysToKeepByDestination { get; set; }
 		/// <summary>Legacy: previously stored keys to strip. Migrated to Keep when UI loads.</summary>
 		List<string> AutoSettingsSyncChannelKeysToStrip { get; set; }
 		/// <summary>EVE settings profile folder name, e.g. settings_Farfnarkle.</summary>
@@ -133,6 +135,9 @@ namespace EveFPreview.Configuration
 		bool TryGetCharacterId(string windowTitle, out int characterId);
 		bool TryGetAccountIdForCharacter(int characterId, out int accountId);
 		void RecordCharacterAccount(int characterId, int accountId);
+
+		/// <summary>Explicit user override for a character's account ID (e.g. Settings Sync "Set account ID…"). Unlike RecordCharacterAccount, always takes effect. Pass accountId &lt;= 0 to clear.</summary>
+		void SetCharacterAccount(int characterId, int accountId);
 
 		ClientLayout GetClientLayout(string currentClient);
 		void SetClientLayout(string currentClient, ClientLayout layout);

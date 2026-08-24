@@ -253,7 +253,9 @@ namespace EveFPreview.View
 			public const string DynamicCycleHotkeys = "Cycle all non-excluded clients in on-screen thumbnail order.";
 			public const string ClickThrough = "Hold this modifier to click through thumbnails to windows behind them (for example Ctrl+Shift).";
 			public const string SettingsProfile = "Which EVE settings profile folder to copy from and to.";
-			public const string ChannelsToKeep = "Chat channels to keep on destination characters when copying settings.";
+			public const string SourceCharacter = "Character to copy settings from.";
+			public const string DestinationCharacters = "Check a character to include it in Sync. Click one (checked or not) to edit which chat channels it keeps.";
+			public const string ChannelsToKeep = "Chat channels to keep on the selected destination character when copying settings. Set separately per destination.";
 			public const string PreserveModuleLayout = "Do not overwrite each alt's fitted module layout from the source character.";
 		}
 	}

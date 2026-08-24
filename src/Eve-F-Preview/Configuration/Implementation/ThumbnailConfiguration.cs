@@ -133,6 +133,7 @@ namespace EveFPreview.Configuration.Implementation
 			this.AutoSettingsSyncDestinationCharacterIds = new List<long>();
 			this.AutoSettingsSyncDestinationUserIds = new List<long>();
 			this.AutoSettingsSyncChannelKeysToKeep = new List<string>();
+			this.AutoSettingsSyncChannelKeysToKeepByDestination = new Dictionary<string, List<string>>();
 			this.AutoSettingsSyncChannelKeysToStrip = new List<string>();
 			this.AutoSettingsSyncProfileName = string.Empty;
 			this.PreserveShipModuleStateOnSync = true;
@@ -329,6 +330,9 @@ namespace EveFPreview.Configuration.Implementation
 
 		[JsonProperty("AutoSettingsSyncChannelKeysToKeep")]
 		public List<string> AutoSettingsSyncChannelKeysToKeep { get; set; }
+
+		[JsonProperty("AutoSettingsSyncChannelKeysToKeepByDestination")]
+		public Dictionary<string, List<string>> AutoSettingsSyncChannelKeysToKeepByDestination { get; set; }
 
 		[JsonProperty("AutoSettingsSyncChannelKeysToStrip")]
 		public List<string> AutoSettingsSyncChannelKeysToStrip { get; set; }
@@ -532,6 +536,25 @@ namespace EveFPreview.Configuration.Implementation
 			this.CharacterAccountMap[characterKey] = accountId;
 		}
 
+		public void SetCharacterAccount(int characterId, int accountId)
+		{
+			if (characterId <= 0)
+			{
+				return;
+			}
+
+			string characterKey = characterId.ToString();
+			if (accountId <= 0)
+			{
+				this.CharacterAccountMap.Remove(characterKey);
+				return;
+			}
+
+			// Explicit user override (e.g. Settings Sync "Set account ID…") - unlike
+			// RecordCharacterAccount, this always takes effect even if a different value is stored.
+			this.CharacterAccountMap[characterKey] = accountId;
+		}
+
 		public ClientLayout GetClientLayout(string currentClient)
 		{
 			ClientLayout layout;
@@ -618,6 +641,7 @@ namespace EveFPreview.Configuration.Implementation
 			this.AutoSettingsSyncChannelKeysToStrip ??= new List<string>();
 			this.AutoSettingsSyncProfileName ??= string.Empty;
 			this.CycleGroupExclusions ??= new Dictionary<string, bool>();
+			this.AutoSettingsSyncChannelKeysToKeepByDestination ??= new Dictionary<string, List<string>>();
 		}
 
 		private static int ApplyRestrictions(int value, int minimum, int maximum)
