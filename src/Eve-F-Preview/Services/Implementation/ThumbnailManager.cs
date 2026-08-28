@@ -11,7 +11,6 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Reflection.Metadata;
-using System.Threading.Tasks;
 using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Threading;
@@ -25,8 +24,11 @@ namespace EveFPreview.Services
 		private const int WINDOW_POSITION_THRESHOLD_HIGH = 31_000;
 		private const int WINDOW_SIZE_THRESHOLD = 10;
 		private const int DEFAULT_LOCATION_CHANGE_NOTIFICATION_DELAY = 2;
-		// Long enough to cover at least one 500ms refresh tick after a hotkey cycle.
-		private const int ACTIVATION_GRACE_PERIOD_MS = 750;
+		// Just long enough to cover the synthetic-hotkey activation round-trip (see ForegroundActivator)
+		// so a foreground poll can't undo it while it's still in flight. Kept short because a
+		// confirmed failure now corrects immediately via ReconcileActiveClientWithRealForeground
+		// instead of waiting this out.
+		private const int ACTIVATION_GRACE_PERIOD_MS = 200;
 
 		private const string DEFAULT_CLIENT_TITLE = "EVE";
 		#endregion
@@ -205,17 +207,32 @@ namespace EveFPreview.Services
 		public void SetActive(KeyValuePair<IntPtr, IThumbnailView> newClient)
 		{
 			this.GetActiveClient()?.ClearBorder();
-#if LINUX
-			this._windowManager.ActivateWindow(newClient.Key, newClient.Value.Title);
-#else
-			this._windowManager.ActivateWindow(newClient.Key, this._configuration.WindowsAnimationStyle);
-#endif
 			this.SwitchActiveClient(newClient.Key, newClient.Value.Title);
 			this.BeginActivationGracePeriod();
 
 			newClient.Value.SetHighlight();
 			// Highlight/overlay only — avoid tearing down the DWM live preview on every cycle.
 			newClient.Value.Refresh(false);
+
+			// The above is optimistic - it assumes the activation below actually lands. If it
+			// doesn't (confirmed by checking the real foreground window, not just trusting
+			// SetForegroundWindow's return value), reconcile immediately instead of leaving a wrong
+			// highlight up until the next foreground poll happens to notice.
+#if LINUX
+			this._windowManager.ActivateWindow(newClient.Key, newClient.Value.Title, this.OnActivationConfirmed);
+#else
+			this._windowManager.ActivateWindow(newClient.Key, this._configuration.WindowsAnimationStyle, this.OnActivationConfirmed);
+#endif
+		}
+
+		private void OnActivationConfirmed(bool confirmed)
+		{
+			if (confirmed)
+			{
+				return;
+			}
+
+			this.ReconcileActiveClientWithRealForeground();
 		}
 
 		public void MinimizeAllClients()
@@ -1369,7 +1386,10 @@ namespace EveFPreview.Services
 
 		/// <summary>
 		/// Align _activeClient with the OS foreground window before computing the next cycle target.
-		/// Prevents cycling from a stale "logical" active client after a failed focus switch.
+		/// Prevents cycling from a stale "logical" active client after a failed focus switch. Skipped
+		/// during the activation grace period so a foreground poll can't undo an activation that's
+		/// still in flight - use ReconcileActiveClientWithRealForeground to correct immediately once
+		/// an activation is confirmed to have actually failed.
 		/// </summary>
 		private void SyncActiveClientFromForeground()
 		{
@@ -1378,6 +1398,15 @@ namespace EveFPreview.Services
 				return;
 			}
 
+			this.ReconcileActiveClientWithRealForeground();
+		}
+
+		/// <summary>
+		/// Unconditionally matches _activeClient (and therefore the highlight) to whatever Windows
+		/// actually reports as the foreground window right now, ignoring the activation grace period.
+		/// </summary>
+		private void ReconcileActiveClientWithRealForeground()
+		{
 			IntPtr foregroundWindowHandle = this._windowManager.GetForegroundWindowHandle();
 			if (foregroundWindowHandle == IntPtr.Zero)
 			{
@@ -1392,6 +1421,7 @@ namespace EveFPreview.Services
 			if (this._thumbnailViews.TryGetValue(foregroundWindowHandle, out IThumbnailView foregroundView))
 			{
 				this.SwitchActiveClient(foregroundWindowHandle, foregroundView.Title);
+				this.RefreshThumbnails();
 				return;
 			}
 
@@ -1400,6 +1430,7 @@ namespace EveFPreview.Services
 				if (entry.Value.IsKnownHandle(foregroundWindowHandle))
 				{
 					this.SwitchActiveClient(entry.Key, entry.Value.Title);
+					this.RefreshThumbnails();
 					return;
 				}
 			}
@@ -1512,22 +1543,19 @@ namespace EveFPreview.Services
 		{
 			IThumbnailView view = this._thumbnailViews[id];
 
-			Task.Run(() =>
-				{
+			// ForegroundActivator.Activate just enqueues a request and fires a synthetic key press -
+			// it doesn't block, so there's no need to hop to a background thread for it (that hop
+			// was also a source of ordering races when a click landed near a hotkey-driven cycle).
+			this.SwitchActiveClient(view.Id, view.Title);
+			this.BeginActivationGracePeriod();
+			this.UpdateClientLayouts();
+			this.RefreshThumbnails();
+
 #if LINUX
-					this._windowManager.ActivateWindow(view.Id, view.Title);
+			this._windowManager.ActivateWindow(view.Id, view.Title, this.OnActivationConfirmed);
 #else
-					this._windowManager.ActivateWindow(view.Id, this._configuration.WindowsAnimationStyle);
+			this._windowManager.ActivateWindow(view.Id, this._configuration.WindowsAnimationStyle, this.OnActivationConfirmed);
 #endif
-				})
-				.ContinueWith((task) =>
-				{
-					// This code should be executed on UI thread
-					this.SwitchActiveClient(view.Id, view.Title);
-					this.BeginActivationGracePeriod();
-					this.UpdateClientLayouts();
-					this.RefreshThumbnails();
-				}, TaskScheduler.FromCurrentSynchronizationContext());
 		}
 
 		private void ThumbnailDeactivated(IntPtr id, bool switchOut)

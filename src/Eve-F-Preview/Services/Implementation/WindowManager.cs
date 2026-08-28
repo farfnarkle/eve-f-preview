@@ -87,11 +87,12 @@ namespace EveFPreview.Services.Implementation
 		/// message, which gets an automatic grant. Our mouse-button cycle hotkeys come from a raw
 		/// input hook instead, which gets no such grant, so cycling would update our own highlight/
 		/// active-client tracking but never actually bring the EVE client to the foreground.
-		/// See ForegroundActivator for how the grant is borrowed.
+		/// See ForegroundActivator for how the grant is borrowed. <paramref name="onActivated"/>, if
+		/// given, is told on the UI thread whether the window really did end up in the foreground.
 		/// </summary>
-		private static void ForceSetForegroundWindow(IntPtr handle)
+		private static void ForceSetForegroundWindow(IntPtr handle, Action<bool> onActivated = null)
 		{
-			ForegroundActivator.Activate(handle);
+			ForegroundActivator.Activate(handle, onActivated);
 		}
 
 		public void TurnOffAnimation()
@@ -124,9 +125,9 @@ namespace EveFPreview.Services.Implementation
 
 		// if building for LINUX the window handling is slightly different
 #if LINUX
-		private void WindowsActivateWindow(IntPtr handle)
+		private void WindowsActivateWindow(IntPtr handle, Action<bool> onActivated = null)
 		{
-			WindowManager.ForceSetForegroundWindow(handle);
+			WindowManager.ForceSetForegroundWindow(handle, onActivated);
 			User32NativeMethods.SetFocus(handle);
 
 			uint style = User32NativeMethods.GetWindowLong(handle, InteropConstants.GWL_STYLE);
@@ -180,15 +181,17 @@ namespace EveFPreview.Services.Implementation
 			}
 		}
 
-        public void ActivateWindow(IntPtr handle, string windowName)
+        public void ActivateWindow(IntPtr handle, string windowName, Action<bool> onActivated = null)
         {
             if (this._enableWineCompatabilityMode)
             {
                 this.WineActivateWindow(windowName);
+                // Wine's wmctrl path has no equivalent of a real foreground check - assume success.
+                onActivated?.Invoke(true);
             }
             else
             {
-                this.WindowsActivateWindow(handle);
+                this.WindowsActivateWindow(handle, onActivated);
             }
         }
 
@@ -211,9 +214,9 @@ namespace EveFPreview.Services.Implementation
 #endif
 
 #if WINDOWS
-		public void ActivateWindow(IntPtr handle, AnimationStyle animation)
+		public void ActivateWindow(IntPtr handle, AnimationStyle animation, Action<bool> onActivated = null)
 		{
-			WindowManager.ForceSetForegroundWindow(handle);
+			WindowManager.ForceSetForegroundWindow(handle, onActivated);
 			User32NativeMethods.SetFocus(handle);
 
 			uint style = User32NativeMethods.GetWindowLong(handle, InteropConstants.GWL_STYLE);

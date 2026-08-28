@@ -16,55 +16,101 @@ namespace EveFPreview.UI.Hotkeys
 	/// binding across every modifier combination, then "presses" it via keybd_event immediately before
 	/// activating - borrowing the grant that a genuine WM_HOTKEY handler gets. Same trick EVE-X Preview
 	/// uses for the same problem.
+	///
+	/// Requests are served one at a time from a queue instead of a single shared slot: firing several
+	/// synthetic presses back-to-back let one request's press arrive after another request had already
+	/// overwritten the pending target, silently losing the first activation. Here the next press isn't
+	/// fired until the previous one's WM_HOTKEY has actually been consumed, and every completion is
+	/// verified against the real foreground window (not just trusted) so the caller knows immediately
+	/// whether it actually needs to fall back to something else.
 	/// </summary>
 	static class ForegroundActivator
 	{
 		private const byte VirtualKeyCode = 0xE8;
 		private const int FirstHotkeyId = 0xBF00; // High range, unlikely to collide with HotkeyHandler's own IDs.
+		private const int WatchdogMilliseconds = 500; // Recovery only: a synthetic press should be consumed in well under this.
 
 		private static readonly uint[] ModifierCombinations = BuildModifierCombinations();
 
 		private static readonly object Sync = new object();
 		private static readonly List<InternalHotkeyFilter> Filters = new List<InternalHotkeyFilter>();
+		private static readonly Queue<PendingActivation> Pending = new Queue<PendingActivation>();
+		private static Timer _watchdog;
 		private static bool _registered;
-		private static IntPtr _pendingHandle;
+		private static bool _pressInFlight;
 
-		/// <summary>Brings the given window to the foreground, working around the permission restriction above.</summary>
-		public static void Activate(IntPtr handle)
+		private sealed class PendingActivation
+		{
+			public IntPtr Handle;
+			public Action<bool> OnCompleted;
+		}
+
+		/// <summary>
+		/// Brings the given window to the foreground, working around the permission restriction
+		/// above. <paramref name="onCompleted"/> (if given) is invoked on the UI thread once this
+		/// request has actually been processed, with whether the foreground window really is now
+		/// <paramref name="handle"/> - not just whether SetForegroundWindow claimed success.
+		/// </summary>
+		public static void Activate(IntPtr handle, Action<bool> onCompleted = null)
 		{
 			if (handle == IntPtr.Zero)
 			{
+				onCompleted?.Invoke(false);
 				return;
 			}
 
 			// RegisterHotKey ties the hotkey to the calling thread's message queue, and
 			// Application.AddMessageFilter only sees messages pumped by the UI thread's message
-			// loop. Callers can reach us from a background thread (e.g. ThumbnailActivated runs
-			// inside a Task.Run) - registering there would tie the hotkey to a thread that never
-			// pumps messages, silently breaking activation for the rest of the process's lifetime.
+			// loop. Callers can reach us from a background thread - registering there would tie the
+			// hotkey to a thread that never pumps messages, silently breaking activation for the
+			// rest of the process's lifetime.
 			if (Application.OpenForms.Count > 0)
 			{
 				Form host = Application.OpenForms[0];
 				if (host.InvokeRequired)
 				{
-					host.BeginInvoke(new Action(() => ForegroundActivator.ActivateOnUiThread(handle)));
+					host.BeginInvoke(new Action(() => ForegroundActivator.Enqueue(handle, onCompleted)));
 					return;
 				}
 			}
 
-			ForegroundActivator.ActivateOnUiThread(handle);
+			Enqueue(handle, onCompleted);
 		}
 
-		private static void ActivateOnUiThread(IntPtr handle)
+		private static void Enqueue(IntPtr handle, Action<bool> onCompleted)
 		{
+			bool shouldFire;
 			lock (Sync)
 			{
 				EnsureRegistered();
-				_pendingHandle = handle;
+				Pending.Enqueue(new PendingActivation { Handle = handle, OnCompleted = onCompleted });
+				shouldFire = !_pressInFlight;
+				_pressInFlight = true;
 			}
 
+			if (shouldFire)
+			{
+				FireSyntheticPress();
+			}
+		}
+
+		private static void FireSyntheticPress()
+		{
 			User32NativeMethods.keybd_event(VirtualKeyCode, 0, 0, UIntPtr.Zero);
 			User32NativeMethods.keybd_event(VirtualKeyCode, 0, User32NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
+
+			_watchdog ??= new Timer();
+			_watchdog.Interval = WatchdogMilliseconds;
+			_watchdog.Tick -= Watchdog_Tick;
+			_watchdog.Tick += Watchdog_Tick;
+			_watchdog.Start();
+		}
+
+		private static void Watchdog_Tick(object sender, EventArgs e)
+		{
+			// The synthetic press never came back as a WM_HOTKEY (some other app may have grabbed
+			// it, or the OS dropped it under load) - don't let the queue stall forever because of it.
+			OnHotkeyFired();
 		}
 
 		private static uint[] BuildModifierCombinations()
@@ -120,22 +166,35 @@ namespace EveFPreview.UI.Hotkeys
 
 		private static void OnHotkeyFired()
 		{
-			IntPtr handle;
+			_watchdog?.Stop();
+
+			PendingActivation activation;
+			bool fireNext;
 			lock (Sync)
 			{
-				handle = _pendingHandle;
-				_pendingHandle = IntPtr.Zero;
-			}
+				if (Pending.Count == 0)
+				{
+					_pressInFlight = false;
+					return;
+				}
 
-			if (handle == IntPtr.Zero)
-			{
-				return;
+				activation = Pending.Dequeue();
+				fireNext = Pending.Count > 0;
+				_pressInFlight = fireNext;
 			}
 
 			// Two attempts, mirroring the same defensive retry other activation-via-hotkey tools use.
-			if (!User32NativeMethods.SetForegroundWindow(handle))
+			if (!User32NativeMethods.SetForegroundWindow(activation.Handle))
 			{
-				User32NativeMethods.SetForegroundWindow(handle);
+				User32NativeMethods.SetForegroundWindow(activation.Handle);
+			}
+
+			bool confirmed = User32NativeMethods.GetForegroundWindow() == activation.Handle;
+			activation.OnCompleted?.Invoke(confirmed);
+
+			if (fireNext)
+			{
+				FireSyntheticPress();
 			}
 		}
 
