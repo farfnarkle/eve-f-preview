@@ -86,6 +86,9 @@
     <EmbeddedResource Include="app.manifest" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Data\WormholeStatics.json" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Include="original-icon.ico" />
   </ItemGroup>
   <ItemGroup>

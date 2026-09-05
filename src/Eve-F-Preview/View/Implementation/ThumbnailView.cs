@@ -389,6 +389,11 @@ namespace EveFPreview.View
 				label = string.IsNullOrEmpty(label)
 					? systemLabel
 					: label + Environment.NewLine + systemLabel;
+
+				if (WormholeStatics.TryGet(this._overlaySystemName, out WormholeSystemInfo wormholeInfo))
+				{
+					label += Environment.NewLine + wormholeInfo.Class + " : " + string.Join("/", wormholeInfo.Statics);
+				}
 			}
 
 			this._overlay.SetOverlayLabel(label);
