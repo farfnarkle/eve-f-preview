@@ -80,12 +80,44 @@ namespace EveFPreview.UI.Hotkeys
 		private static void Enqueue(IntPtr handle, Action<bool> onCompleted)
 		{
 			bool shouldFire;
+			bool directSucceeded = false;
 			lock (Sync)
 			{
-				EnsureRegistered();
-				Pending.Enqueue(new PendingActivation { Handle = handle, OnCompleted = onCompleted });
-				shouldFire = !_pressInFlight;
-				_pressInFlight = true;
+				// Fast path: when nothing else is in flight, try a plain SetForegroundWindow first.
+				// If we were called synchronously from inside a genuine WM_HOTKEY handler - which is
+				// exactly what the keyboard cycle hotkeys are - Windows has ALREADY granted this
+				// thread the right to move the foreground window. Spending that grant directly is
+				// instant and can't race; kicking off a fresh synthetic-press round-trip instead
+				// throws it away and gambles on the 0xE8 press being pumped back before the grant
+				// goes stale. The synthetic press stays as the fallback for callers that never got
+				// the automatic grant (the mouse-button hook path).
+				if (!_pressInFlight && Pending.Count == 0)
+				{
+					if (!User32NativeMethods.SetForegroundWindow(handle))
+					{
+						User32NativeMethods.SetForegroundWindow(handle);
+					}
+
+					directSucceeded = User32NativeMethods.GetForegroundWindow() == handle;
+				}
+
+				if (directSucceeded)
+				{
+					shouldFire = false;
+				}
+				else
+				{
+					EnsureRegistered();
+					Pending.Enqueue(new PendingActivation { Handle = handle, OnCompleted = onCompleted });
+					shouldFire = !_pressInFlight;
+					_pressInFlight = true;
+				}
+			}
+
+			if (directSucceeded)
+			{
+				onCompleted?.Invoke(true);
+				return;
 			}
 
 			if (shouldFire)
