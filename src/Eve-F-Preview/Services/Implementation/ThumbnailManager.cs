@@ -41,6 +41,7 @@ namespace EveFPreview.Services
 		private readonly DispatcherTimer _thumbnailUpdateTimer;
 		private readonly IThumbnailViewFactory _thumbnailViewFactory;
 		private readonly IEveLocationService _locationService;
+		private readonly ICharacterIndicatorManager _characterIndicatorManager;
 		private readonly Dictionary<IntPtr, IThumbnailView> _thumbnailViews;
 
 		private (IntPtr Handle, string Title) _activeClient;
@@ -78,7 +79,7 @@ namespace EveFPreview.Services
 
 		public Action<bool, string> AutoSettingsSyncStatusReported { get; set; }
 
-		public ThumbnailManager(IMediator mediator, IThumbnailConfiguration configuration, IProcessMonitor processMonitor, IWindowManager windowManager, IThumbnailViewFactory factory, IEveLocationService locationService)
+		public ThumbnailManager(IMediator mediator, IThumbnailConfiguration configuration, IProcessMonitor processMonitor, IWindowManager windowManager, IThumbnailViewFactory factory, IEveLocationService locationService, ICharacterIndicatorManager characterIndicatorManager)
 		{
 			this._mediator = mediator;
 			this._processMonitor = processMonitor;
@@ -86,6 +87,7 @@ namespace EveFPreview.Services
 			this._configuration = configuration;
 			this._thumbnailViewFactory = factory;
 			this._locationService = locationService;
+			this._characterIndicatorManager = characterIndicatorManager;
 
 			this._activeClient = (IntPtr.Zero, ThumbnailManager.DEFAULT_CLIENT_TITLE);
 
@@ -114,6 +116,21 @@ namespace EveFPreview.Services
 			this._clickThroughPollTimer.Tick += (_, _) => this.UpdateClickThroughState();
 
 			this._hideThumbnailsDelay = this._configuration.HideThumbnailsDelay;
+
+			this._characterIndicatorManager.CellClicked = this.IndicatorCellClicked;
+		}
+
+		/// <summary>
+		/// A square in the indicator window can go slightly stale between paint and click (the
+		/// client closed in between) - unlike a real thumbnail, which can't be clicked once its
+		/// window is gone. Guard the lookup before handing off to the normal activation path.
+		/// </summary>
+		private void IndicatorCellClicked(IntPtr id)
+		{
+			if (this._thumbnailViews.ContainsKey(id))
+			{
+				this.ThumbnailActivated(id);
+			}
 		}
 
 		public void ReloadHotkeys()
@@ -406,14 +423,30 @@ namespace EveFPreview.Services
 		private static List<KeyValuePair<IntPtr, IThumbnailView>> OrderThumbnailsForDynamicCycle(
 			List<KeyValuePair<IntPtr, IThumbnailView>> candidates)
 		{
+			return ThumbnailManager.GroupThumbnailsIntoRows(candidates)
+				.OrderBy(row => row.Min(x => x.Value.ThumbnailLocation.Y))
+				.SelectMany(row => row.OrderBy(x => x.Value.ThumbnailLocation.X))
+				.ToList();
+		}
+
+		/// <summary>
+		/// Buckets thumbnails into on-screen rows: top edges within ~90% of a thumbnail's height
+		/// of each other are treated as the same row. Rows and their contents are unordered here -
+		/// callers sort both. Shared by dynamic cycling and the character indicator so both agree
+		/// on what "the thumbnail layout" looks like.
+		/// </summary>
+		private static List<List<KeyValuePair<IntPtr, IThumbnailView>>> GroupThumbnailsIntoRows(
+			List<KeyValuePair<IntPtr, IThumbnailView>> candidates)
+		{
+			var rows = new List<List<KeyValuePair<IntPtr, IThumbnailView>>>();
+
 			if (candidates.Count == 0)
 			{
-				return candidates;
+				return rows;
 			}
 
 			int maxThumbnailHeight = candidates.Max(x => x.Value.ThumbnailSize.Height);
 			int rowYTolerance = Math.Max(50, (int)(maxThumbnailHeight * 0.9));
-			var rows = new List<List<KeyValuePair<IntPtr, IThumbnailView>>>();
 
 			foreach (KeyValuePair<IntPtr, IThumbnailView> item in candidates.OrderBy(x => x.Value.ThumbnailLocation.Y))
 			{
@@ -433,10 +466,7 @@ namespace EveFPreview.Services
 				row.Add(item);
 			}
 
-			return rows
-				.OrderBy(row => row.Min(x => x.Value.ThumbnailLocation.Y))
-				.SelectMany(row => row.OrderBy(x => x.Value.ThumbnailLocation.X))
-				.ToList();
+			return rows;
 		}
 
 		public void RegisterCycleClientHotkey(IEnumerable<Keys> keys, bool isForwards, Dictionary<string, int> cycleOrder)
@@ -871,8 +901,10 @@ namespace EveFPreview.Services
 			this._thumbnailUpdateTimer.Start();
 			this._clickThroughPollTimer.Start();
 			this.AttachForegroundChangeHook();
+			this._characterIndicatorManager.Start();
 			this.RefreshThumbnails();
 			this.UpdateCycleHotkeyRegistration();
+			this.UpdateCharacterIndicator();
 
 			if (this._configuration.EnableAutoSettingsSync)
 			{
@@ -890,6 +922,7 @@ namespace EveFPreview.Services
 			this._clickThroughPollTimer.Stop();
 			this.UnregisterCycleHotkeysForced();
 			this.DetachForegroundChangeHook();
+			this._characterIndicatorManager.Stop();
 		}
 
 		private void ThumbnailUpdateTimerTick(object sender, EventArgs e)
@@ -897,6 +930,32 @@ namespace EveFPreview.Services
 			this.UpdateThumbnailsList();
 			this.RefreshThumbnails();
 			this.UpdateCycleHotkeyRegistration();
+			this.UpdateCharacterIndicator();
+		}
+
+		/// <summary>
+		/// Pushes the current thumbnail layout to the character indicator window, grouped into
+		/// rows the same way dynamic cycling groups them, so its grid visually matches the
+		/// on-screen thumbnail arrangement. Cheap no-op (besides hiding the window) while the
+		/// indicator is disabled - see CharacterIndicatorManager.
+		/// </summary>
+		private void UpdateCharacterIndicator()
+		{
+			List<KeyValuePair<IntPtr, IThumbnailView>> candidates = this._thumbnailViews
+				.Where(x => !x.Value.IsExcludedFromCycleGroup)
+				.ToList();
+
+			List<List<KeyValuePair<IntPtr, IThumbnailView>>> rows = ThumbnailManager.GroupThumbnailsIntoRows(candidates);
+
+			List<IReadOnlyList<CharacterIndicatorCell>> indicatorRows = rows
+				.OrderBy(row => row.Min(x => x.Value.ThumbnailLocation.Y))
+				.Select(row => (IReadOnlyList<CharacterIndicatorCell>)row
+					.OrderBy(x => x.Value.ThumbnailLocation.X)
+					.Select(x => new CharacterIndicatorCell(x.Key, x.Value.Title, x.Key == this._activeClient.Handle, this._configuration.IsThumbnailDisabled(x.Value.Title)))
+					.ToList())
+				.ToList();
+
+			this._characterIndicatorManager.UpdateLayout(indicatorRows, this.IsForegroundATrackedEveClientWindow());
 		}
 
 		private void AutoSettingsSyncDelayTimer_Tick(object sender, EventArgs e)
@@ -1372,6 +1431,12 @@ namespace EveFPreview.Services
 			}
 
 			this._activeClient = (foregroundClientHandle, foregroundClientTitle);
+
+			// Every path that changes the active client funnels through here (hotkey cycling,
+			// thumbnail clicks, foreground reconciliation) - update the indicator right now
+			// instead of waiting for the next timer tick, so it tracks the real window swap
+			// instantly instead of visibly lagging behind it.
+			this.UpdateCharacterIndicator();
 		}
 
 		private void BeginActivationGracePeriod()

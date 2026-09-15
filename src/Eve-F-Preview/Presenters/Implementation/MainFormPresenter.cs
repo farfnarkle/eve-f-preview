@@ -185,6 +185,9 @@ namespace EveFPreview.Presenters
 			this.View.EnableAccountBasedThumbnailPositioning = this._configuration.EnableAccountBasedThumbnailPositioning;
 			this.View.EnableAutoSettingsSync = this._configuration.EnableAutoSettingsSync;
 			this.View.EnablePerClientThumbnailLayouts = this._configuration.EnablePerClientThumbnailLayouts;
+			this.View.EnableCharacterIndicator = this._configuration.EnableCharacterIndicator;
+			this.View.LockCharacterIndicatorLocation = this._configuration.LockCharacterIndicatorLocation;
+			this.View.EnableCharacterIndicatorClickToActivate = this._configuration.EnableCharacterIndicatorClickToActivate;
 
 			this.View.SetThumbnailSizeLimitations(this._configuration.ThumbnailMinimumSize, this._configuration.ThumbnailMaximumSize);
 			this.View.ThumbnailSize = this._configuration.ThumbnailSize;
@@ -307,6 +310,9 @@ namespace EveFPreview.Presenters
 			}
 			this._configuration.WindowsAnimationStyle = ViewAnimationStyleConverter.Convert(this.View.WindowsAnimationStyle); 
             this._configuration.ShowThumbnailsAlwaysOnTop = this.View.ShowThumbnailsAlwaysOnTop;
+			this._configuration.EnableCharacterIndicator = this.View.EnableCharacterIndicator;
+			this._configuration.LockCharacterIndicatorLocation = this.View.LockCharacterIndicatorLocation;
+			this._configuration.EnableCharacterIndicatorClickToActivate = this.View.EnableCharacterIndicatorClickToActivate;
 
 			if (this._configuration.PreventPreviews != this.View.PreventPreviews)
 			{

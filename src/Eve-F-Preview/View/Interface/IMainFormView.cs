@@ -29,6 +29,9 @@ namespace EveFPreview.View
 		bool EnableAccountBasedThumbnailPositioning { get; set; }
 		bool EnableAutoSettingsSync { get; set; }
 		bool EnablePerClientThumbnailLayouts { get; set; }
+		bool EnableCharacterIndicator { get; set; }
+		bool LockCharacterIndicatorLocation { get; set; }
+		bool EnableCharacterIndicatorClickToActivate { get; set; }
 
 		void SetAutoSettingsSyncStatus(bool success, string message);
 

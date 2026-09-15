@@ -78,6 +78,9 @@ namespace EveFPreview.View
 			EnableAutoSettingsSyncCheckBox = new CheckBox();
 			AutoSettingsSyncStatusLabel = new Label();
 			EnablePerClientThumbnailsLayoutsCheckBox = new CheckBox();
+			EnableCharacterIndicatorCheckBox = new CheckBox();
+			LockCharacterIndicatorLocationCheckBox = new CheckBox();
+			EnableCharacterIndicatorClickToActivateCheckBox = new CheckBox();
 			MinimizeToTrayCheckBox = new CheckBox();
 			StartMinimizedCheckBox = new CheckBox();
 			CloseAllEveClientsButton = new Button();
@@ -311,6 +314,9 @@ namespace EveFPreview.View
 			GeneralSettingsPanel.Controls.Add(DynamicCycleGroupCheckBox);
 			GeneralSettingsPanel.Controls.Add(EnableAccountBasedThumbnailPositioningCheckBox);
 			GeneralSettingsPanel.Controls.Add(EnablePerClientThumbnailsLayoutsCheckBox);
+			GeneralSettingsPanel.Controls.Add(EnableCharacterIndicatorCheckBox);
+			GeneralSettingsPanel.Controls.Add(LockCharacterIndicatorLocationCheckBox);
+			GeneralSettingsPanel.Controls.Add(EnableCharacterIndicatorClickToActivateCheckBox);
 			GeneralSettingsPanel.Controls.Add(EnableAutoSettingsSyncCheckBox);
 			GeneralSettingsPanel.Controls.Add(AutoSettingsSyncStatusLabel);
 			GeneralSettingsPanel.Controls.Add(MinimizeToTrayCheckBox);
@@ -474,6 +480,42 @@ namespace EveFPreview.View
 			EnablePerClientThumbnailsLayoutsCheckBox.Text = "Unique layout for each EVE client";
 			EnablePerClientThumbnailsLayoutsCheckBox.UseVisualStyleBackColor = true;
 			EnablePerClientThumbnailsLayoutsCheckBox.CheckedChanged += OptionChanged_Handler;
+			//
+			// EnableCharacterIndicatorCheckBox
+			//
+			EnableCharacterIndicatorCheckBox.AutoSize = true;
+			EnableCharacterIndicatorCheckBox.Location = new Point(9, 247);
+			EnableCharacterIndicatorCheckBox.Margin = new Padding(4);
+			EnableCharacterIndicatorCheckBox.Name = "EnableCharacterIndicatorCheckBox";
+			EnableCharacterIndicatorCheckBox.Size = new Size(200, 19);
+			EnableCharacterIndicatorCheckBox.TabIndex = 25;
+			EnableCharacterIndicatorCheckBox.Text = "Show current character indicator";
+			EnableCharacterIndicatorCheckBox.UseVisualStyleBackColor = true;
+			EnableCharacterIndicatorCheckBox.CheckedChanged += OptionChanged_Handler;
+			//
+			// LockCharacterIndicatorLocationCheckBox
+			//
+			LockCharacterIndicatorLocationCheckBox.AutoSize = true;
+			LockCharacterIndicatorLocationCheckBox.Location = new Point(9, 274);
+			LockCharacterIndicatorLocationCheckBox.Margin = new Padding(4);
+			LockCharacterIndicatorLocationCheckBox.Name = "LockCharacterIndicatorLocationCheckBox";
+			LockCharacterIndicatorLocationCheckBox.Size = new Size(200, 19);
+			LockCharacterIndicatorLocationCheckBox.TabIndex = 26;
+			LockCharacterIndicatorLocationCheckBox.Text = "Lock indicator position";
+			LockCharacterIndicatorLocationCheckBox.UseVisualStyleBackColor = true;
+			LockCharacterIndicatorLocationCheckBox.CheckedChanged += OptionChanged_Handler;
+			//
+			// EnableCharacterIndicatorClickToActivateCheckBox
+			//
+			EnableCharacterIndicatorClickToActivateCheckBox.AutoSize = true;
+			EnableCharacterIndicatorClickToActivateCheckBox.Location = new Point(9, 301);
+			EnableCharacterIndicatorClickToActivateCheckBox.Margin = new Padding(4);
+			EnableCharacterIndicatorClickToActivateCheckBox.Name = "EnableCharacterIndicatorClickToActivateCheckBox";
+			EnableCharacterIndicatorClickToActivateCheckBox.Size = new Size(200, 19);
+			EnableCharacterIndicatorClickToActivateCheckBox.TabIndex = 27;
+			EnableCharacterIndicatorClickToActivateCheckBox.Text = "Make indicator clickable";
+			EnableCharacterIndicatorClickToActivateCheckBox.UseVisualStyleBackColor = true;
+			EnableCharacterIndicatorClickToActivateCheckBox.CheckedChanged += OptionChanged_Handler;
 			// 
 			// EnableAutoSettingsSyncCheckBox
 			// 
@@ -1871,6 +1913,9 @@ namespace EveFPreview.View
 		private CheckBox EnableAutoSettingsSyncCheckBox;
 		private Label AutoSettingsSyncStatusLabel;
 		private CheckBox EnablePerClientThumbnailsLayoutsCheckBox;
+		private CheckBox EnableCharacterIndicatorCheckBox;
+		private CheckBox LockCharacterIndicatorLocationCheckBox;
+		private CheckBox EnableCharacterIndicatorClickToActivateCheckBox;
 		private CheckBox MinimizeToTrayCheckBox;
 		private CheckBox StartMinimizedCheckBox;
 		private Button CloseAllEveClientsButton;

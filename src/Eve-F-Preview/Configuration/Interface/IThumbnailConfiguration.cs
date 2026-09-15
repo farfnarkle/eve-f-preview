@@ -116,6 +116,15 @@ namespace EveFPreview.Configuration
 
 		Point LoginThumbnailLocation { get; set; }
 
+		/// <summary>Shows a small always-on-top grid of squares mirroring the thumbnail layout, with the active client's square highlighted.</summary>
+		bool EnableCharacterIndicator { get; set; }
+		/// <summary>Top-left of the character indicator window, remembered across restarts.</summary>
+		Point CharacterIndicatorLocation { get; set; }
+		/// <summary>Prevent dragging the character indicator to a new position.</summary>
+		bool LockCharacterIndicatorLocation { get; set; }
+		/// <summary>Clicking a square in the character indicator activates that client, the same as clicking its thumbnail.</summary>
+		bool EnableCharacterIndicatorClickToActivate { get; set; }
+
 		Point NewPreviewSpawnLocation { get; set; }
 		bool NewPreviewAutoTile { get; set; }
 

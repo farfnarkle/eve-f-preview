@@ -114,12 +114,19 @@ namespace EveFPreview.View
 
 		public static void AddRow(TableLayoutPanel table, Control control, string helpText = null)
 		{
+			AddRow(table, control, helpText, indent: 0);
+		}
+
+		/// <summary>Same as <see cref="AddRow(TableLayoutPanel, Control, string)"/>, but pushed in from the
+		/// left by <paramref name="indent"/> pixels - for an option that only makes sense under another one.</summary>
+		public static void AddRow(TableLayoutPanel table, Control control, string helpText, int indent)
+		{
 			int rowIndex = table.RowCount;
 			table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 			table.RowCount++;
 
 			ResetForTable(control);
-			control.Margin = new Padding(0, 6, 8, 6);
+			control.Margin = new Padding(indent, 6, 8, 6);
 			if (control is ComboBox || control is TrackBar || control is TableLayoutPanel)
 			{
 				control.Dock = DockStyle.Fill;
@@ -257,6 +264,9 @@ namespace EveFPreview.View
 			public const string DestinationCharacters = "Check a character to include it in Sync. Click one (checked or not) to edit which chat channels it keeps.";
 			public const string ChannelsToKeep = "Chat channels to keep on the selected destination character when copying settings. Set separately per destination.";
 			public const string PreserveModuleLayout = "Do not overwrite each alt's fitted module layout from the source character.";
+			public const string CharacterIndicator = "Show a small always-on-top grid mirroring the thumbnail layout, with the active client's square highlighted gold. Drag it to reposition.";
+			public const string LockCharacterIndicator = "Prevent dragging the character indicator to a new position.";
+			public const string ClickToActivateCharacterIndicator = "Click a square in the character indicator to activate that client, the same as clicking its thumbnail.";
 		}
 	}
 }

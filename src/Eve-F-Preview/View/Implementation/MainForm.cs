@@ -188,6 +188,9 @@ namespace EveFPreview.View
 			SettingsHelp.AddRow(table, this.DynamicCycleGroupCheckBox, SettingsHelp.Text.DynamicCycleGroup);
 			SettingsHelp.AddRow(table, this.EnableAccountBasedThumbnailPositioningCheckBox, SettingsHelp.Text.AccountBasedPositioning);
 			SettingsHelp.AddRow(table, this.EnablePerClientThumbnailsLayoutsCheckBox, SettingsHelp.Text.UniqueLayout);
+			SettingsHelp.AddRow(table, this.EnableCharacterIndicatorCheckBox, SettingsHelp.Text.CharacterIndicator);
+			SettingsHelp.AddRow(table, this.LockCharacterIndicatorLocationCheckBox, SettingsHelp.Text.LockCharacterIndicator, indent: 21);
+			SettingsHelp.AddRow(table, this.EnableCharacterIndicatorClickToActivateCheckBox, SettingsHelp.Text.ClickToActivateCharacterIndicator, indent: 21);
 			SettingsHelp.AddRow(table, this.MinimizeInactiveClientsCheckBox);
 			SettingsHelp.AddRow(
 				table,
@@ -730,6 +733,24 @@ namespace EveFPreview.View
 		{
 			get => this.EnablePerClientThumbnailsLayoutsCheckBox.Checked;
 			set => this.EnablePerClientThumbnailsLayoutsCheckBox.Checked = value;
+		}
+
+		public bool EnableCharacterIndicator
+		{
+			get => this.EnableCharacterIndicatorCheckBox.Checked;
+			set => this.EnableCharacterIndicatorCheckBox.Checked = value;
+		}
+
+		public bool LockCharacterIndicatorLocation
+		{
+			get => this.LockCharacterIndicatorLocationCheckBox.Checked;
+			set => this.LockCharacterIndicatorLocationCheckBox.Checked = value;
+		}
+
+		public bool EnableCharacterIndicatorClickToActivate
+		{
+			get => this.EnableCharacterIndicatorClickToActivateCheckBox.Checked;
+			set => this.EnableCharacterIndicatorClickToActivateCheckBox.Checked = value;
 		}
 
 		public Size ThumbnailSize

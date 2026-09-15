@@ -183,6 +183,11 @@ namespace EveFPreview.Configuration.Implementation
 
 			this.NewPreviewSpawnLocation = new Point(0, 0);
 			this.NewPreviewAutoTile = false;
+
+			this.EnableCharacterIndicator = false;
+			this.CharacterIndicatorLocation = Point.Empty;
+			this.LockCharacterIndicatorLocation = false;
+			this.EnableCharacterIndicatorClickToActivate = false;
 		}
 
 
@@ -398,6 +403,18 @@ namespace EveFPreview.Configuration.Implementation
 
 		[JsonProperty("NewPreviewAutoTile")]
 		public bool NewPreviewAutoTile { get; set; }
+
+		[JsonProperty("EnableCharacterIndicator")]
+		public bool EnableCharacterIndicator { get; set; }
+
+		[JsonProperty("CharacterIndicatorLocation")]
+		public Point CharacterIndicatorLocation { get; set; }
+
+		[JsonProperty("LockCharacterIndicatorLocation")]
+		public bool LockCharacterIndicatorLocation { get; set; }
+
+		[JsonProperty("EnableCharacterIndicatorClickToActivate")]
+		public bool EnableCharacterIndicatorClickToActivate { get; set; }
 
 		[JsonProperty("PortraitThumbnailsDirectory")]
 		public string PortraitThumbnailsDirectory { get; set; }

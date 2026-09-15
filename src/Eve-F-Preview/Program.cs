@@ -103,6 +103,7 @@ namespace EveFPreview
 			container.Register<IThumbnailViewFactory>();
 			container.Register<IThumbnailDescription>();
 			container.Register<ICharacterPortraitService>();
+			container.Register<ICharacterIndicatorManager>();
 			container.Register<IEveLocationService, EveChatLogLocationService>();
 
 			IApplicationController controller = new ApplicationController(container);
