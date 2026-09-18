@@ -188,9 +188,6 @@ namespace EveFPreview.View
 			SettingsHelp.AddRow(table, this.DynamicCycleGroupCheckBox, SettingsHelp.Text.DynamicCycleGroup);
 			SettingsHelp.AddRow(table, this.EnableAccountBasedThumbnailPositioningCheckBox, SettingsHelp.Text.AccountBasedPositioning);
 			SettingsHelp.AddRow(table, this.EnablePerClientThumbnailsLayoutsCheckBox, SettingsHelp.Text.UniqueLayout);
-			SettingsHelp.AddRow(table, this.EnableCharacterIndicatorCheckBox, SettingsHelp.Text.CharacterIndicator);
-			SettingsHelp.AddRow(table, this.LockCharacterIndicatorLocationCheckBox, SettingsHelp.Text.LockCharacterIndicator, indent: 21);
-			SettingsHelp.AddRow(table, this.EnableCharacterIndicatorClickToActivateCheckBox, SettingsHelp.Text.ClickToActivateCharacterIndicator, indent: 21);
 			SettingsHelp.AddRow(table, this.MinimizeInactiveClientsCheckBox);
 			SettingsHelp.AddRow(
 				table,
@@ -251,6 +248,9 @@ namespace EveFPreview.View
 					this.FindNamed<Label>("label1"),
 					this.PreventPreviewColorButton),
 				SettingsHelp.Text.DoNotDisplayPreviews);
+			SettingsHelp.AddRow(table, this.EnableCharacterIndicatorCheckBox, SettingsHelp.Text.CharacterIndicator);
+			SettingsHelp.AddRow(table, this.LockCharacterIndicatorLocationCheckBox, SettingsHelp.Text.LockCharacterIndicator, indent: 21);
+			SettingsHelp.AddRow(table, this.EnableCharacterIndicatorClickToActivateCheckBox, SettingsHelp.Text.ClickToActivateCharacterIndicator, indent: 21);
 			SettingsHelp.AddFullWidthButton(table, this.RefreshPortraitsButton);
 
 			SettingsHelp.HostInScrollPanel(panel, table);

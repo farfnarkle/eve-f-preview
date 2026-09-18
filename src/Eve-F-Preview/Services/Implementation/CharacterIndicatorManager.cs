@@ -20,6 +20,7 @@ namespace EveFPreview.Services
 		private readonly IThumbnailConfiguration _configuration;
 		private CharacterIndicatorForm _form;
 		private Action<IntPtr> _cellClicked;
+		private Action<IntPtr> _cellShiftClicked;
 		private DateTime? _focusLostAtUtc;
 
 		public CharacterIndicatorManager(IThumbnailConfiguration configuration)
@@ -36,6 +37,19 @@ namespace EveFPreview.Services
 				if (this._form != null)
 				{
 					this._form.CellClicked = value;
+				}
+			}
+		}
+
+		public Action<IntPtr> CellShiftClicked
+		{
+			get => this._cellShiftClicked;
+			set
+			{
+				this._cellShiftClicked = value;
+				if (this._form != null)
+				{
+					this._form.CellShiftClicked = value;
 				}
 			}
 		}
@@ -119,6 +133,7 @@ namespace EveFPreview.Services
 			this._form = new CharacterIndicatorForm();
 			this._form.LocationDragged = location => this._configuration.CharacterIndicatorLocation = location;
 			this._form.CellClicked = this._cellClicked;
+			this._form.CellShiftClicked = this._cellShiftClicked;
 
 			Point savedLocation = this._configuration.CharacterIndicatorLocation;
 			this._form.Location = savedLocation != Point.Empty ? savedLocation : new Point(40, 40);

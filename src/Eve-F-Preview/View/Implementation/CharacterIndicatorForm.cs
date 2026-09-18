@@ -27,9 +27,11 @@ namespace EveFPreview.View
 		private static readonly Color SquareColor = Color.FromArgb(255, 125, 125, 125);
 		private static readonly Color ActiveSquareColor = Color.FromArgb(255, 219, 172, 52);
 		private static readonly Color DisabledSquareColor = Color.FromArgb(255, 199, 62, 52);
+		private static readonly Color ExcludedSquareColor = Color.FromArgb(255, 70, 70, 70);
 
 		private IReadOnlyList<IReadOnlyList<CharacterIndicatorCell>> _rows = Array.Empty<IReadOnlyList<CharacterIndicatorCell>>();
 		private bool _dragging;
+		private bool _shiftHeldOnDown;
 		private Point _dragMouseStart;
 		private Point _dragFormStart;
 		private Point _mouseDownClientLocation;
@@ -40,6 +42,9 @@ namespace EveFPreview.View
 
 		/// <summary>Fired (with the client's window handle) when a square is clicked while <see cref="ClickToActivate"/> is on.</summary>
 		public Action<IntPtr> CellClicked { get; set; }
+
+		/// <summary>Fired (with the client's window handle) when a square is shift-clicked. Always active, independent of <see cref="ClickToActivate"/> - mirrors shift-clicking the real thumbnail.</summary>
+		public Action<IntPtr> CellShiftClicked { get; set; }
 
 		/// <summary>When true, dragging is disabled - the window stays put.</summary>
 		public bool Locked { get; set; }
@@ -133,7 +138,9 @@ namespace EveFPreview.View
 						? CharacterIndicatorForm.DisabledSquareColor
 						: cell.IsActive
 							? CharacterIndicatorForm.ActiveSquareColor
-							: CharacterIndicatorForm.SquareColor;
+							: cell.IsExcludedFromCycleGroup
+								? CharacterIndicatorForm.ExcludedSquareColor
+								: CharacterIndicatorForm.SquareColor;
 
 					using (GraphicsPath path = CharacterIndicatorForm.RoundedRect(bounds, CornerRadius))
 					using (SolidBrush brush = new SolidBrush(color))
@@ -168,7 +175,10 @@ namespace EveFPreview.View
 			this._mouseDownClientLocation = e.Location;
 			this._dragMouseStart = Cursor.Position;
 			this._dragFormStart = this.Location;
-			this._dragging = !this.Locked;
+			this._shiftHeldOnDown = (ModifierKeys & Keys.Shift) == Keys.Shift;
+			// Shift-click is a gesture, not a drag start - same as the real thumbnail, holding
+			// shift never moves anything.
+			this._dragging = !this.Locked && !this._shiftHeldOnDown;
 		}
 
 		private void CharacterIndicatorForm_MouseMove(object sender, MouseEventArgs e)
@@ -205,16 +215,22 @@ namespace EveFPreview.View
 				return;
 			}
 
-			// Not enough movement to count as a drag (or dragging was locked) - treat it as a click.
-			if (this._clickToActivate)
+			// Not enough movement to count as a drag (or dragging was locked/shifted) - treat it
+			// as a click. Shift-click always works, regardless of ClickToActivate - it mirrors the
+			// real thumbnail's shift-click, which isn't gated behind any indicator setting.
+			if (this._shiftHeldOnDown)
 			{
-				this.HandleCellClick(this._mouseDownClientLocation);
+				this.HandleCellClick(this._mouseDownClientLocation, this.CellShiftClicked);
+			}
+			else if (this._clickToActivate)
+			{
+				this.HandleCellClick(this._mouseDownClientLocation, this.CellClicked);
 			}
 		}
 
-		private void HandleCellClick(Point clientLocation)
+		private void HandleCellClick(Point clientLocation, Action<IntPtr> handler)
 		{
-			if (this.CellClicked == null)
+			if (handler == null)
 			{
 				return;
 			}
@@ -236,7 +252,7 @@ namespace EveFPreview.View
 						continue;
 					}
 
-					this.CellClicked(row[colIndex].Handle);
+					handler(row[colIndex].Handle);
 					return;
 				}
 			}

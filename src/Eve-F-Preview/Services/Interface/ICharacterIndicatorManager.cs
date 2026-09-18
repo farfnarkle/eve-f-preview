@@ -18,6 +18,9 @@ namespace EveFPreview.Services
 		/// <summary>Invoked (with the client's window handle) when a square is clicked while the "clickable" setting is on.</summary>
 		Action<IntPtr> CellClicked { get; set; }
 
+		/// <summary>Invoked (with the client's window handle) when a square is shift-clicked - toggles that client's cycle-group exclusion, same as shift-clicking its thumbnail. Always active, independent of the "clickable" setting.</summary>
+		Action<IntPtr> CellShiftClicked { get; set; }
+
 		/// <summary>
 		/// Pushes the current thumbnail layout, grouped into rows the same way the dynamic
 		/// cycle order groups them (top-to-bottom, left-to-right within a row). No-ops (and
@@ -34,13 +37,15 @@ namespace EveFPreview.Services
 		public readonly string Title;
 		public readonly bool IsActive;
 		public readonly bool IsDisabled;
+		public readonly bool IsExcludedFromCycleGroup;
 
-		public CharacterIndicatorCell(IntPtr handle, string title, bool isActive, bool isDisabled)
+		public CharacterIndicatorCell(IntPtr handle, string title, bool isActive, bool isDisabled, bool isExcludedFromCycleGroup)
 		{
 			this.Handle = handle;
 			this.Title = title;
 			this.IsActive = isActive;
 			this.IsDisabled = isDisabled;
+			this.IsExcludedFromCycleGroup = isExcludedFromCycleGroup;
 		}
 	}
 }

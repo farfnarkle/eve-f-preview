@@ -314,9 +314,6 @@ namespace EveFPreview.View
 			GeneralSettingsPanel.Controls.Add(DynamicCycleGroupCheckBox);
 			GeneralSettingsPanel.Controls.Add(EnableAccountBasedThumbnailPositioningCheckBox);
 			GeneralSettingsPanel.Controls.Add(EnablePerClientThumbnailsLayoutsCheckBox);
-			GeneralSettingsPanel.Controls.Add(EnableCharacterIndicatorCheckBox);
-			GeneralSettingsPanel.Controls.Add(LockCharacterIndicatorLocationCheckBox);
-			GeneralSettingsPanel.Controls.Add(EnableCharacterIndicatorClickToActivateCheckBox);
 			GeneralSettingsPanel.Controls.Add(EnableAutoSettingsSyncCheckBox);
 			GeneralSettingsPanel.Controls.Add(AutoSettingsSyncStatusLabel);
 			GeneralSettingsPanel.Controls.Add(MinimizeToTrayCheckBox);
@@ -607,6 +604,9 @@ namespace EveFPreview.View
 			ThumbnailSettingsPanel.Controls.Add(RefreshPortraitsButton);
 			ThumbnailSettingsPanel.Controls.Add(PreventPreviewColorButton);
 			ThumbnailSettingsPanel.Controls.Add(PreventPreviewsCheckBox);
+			ThumbnailSettingsPanel.Controls.Add(EnableCharacterIndicatorCheckBox);
+			ThumbnailSettingsPanel.Controls.Add(LockCharacterIndicatorLocationCheckBox);
+			ThumbnailSettingsPanel.Controls.Add(EnableCharacterIndicatorClickToActivateCheckBox);
 			ThumbnailSettingsPanel.Controls.Add(ThumbnailSnapToGridCheckBox);
 			ThumbnailSettingsPanel.Controls.Add(ThumbnailSnapToEdgesCheckBox);
 			ThumbnailSettingsPanel.Controls.Add(ThumbnailSnapToGridSizeYNumericEdit);

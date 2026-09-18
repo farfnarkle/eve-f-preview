@@ -118,6 +118,7 @@ namespace EveFPreview.Services
 			this._hideThumbnailsDelay = this._configuration.HideThumbnailsDelay;
 
 			this._characterIndicatorManager.CellClicked = this.IndicatorCellClicked;
+			this._characterIndicatorManager.CellShiftClicked = this.ThumbnailToggleCycleGroup;
 		}
 
 		/// <summary>
@@ -941,9 +942,10 @@ namespace EveFPreview.Services
 		/// </summary>
 		private void UpdateCharacterIndicator()
 		{
-			List<KeyValuePair<IntPtr, IThumbnailView>> candidates = this._thumbnailViews
-				.Where(x => !x.Value.IsExcludedFromCycleGroup)
-				.ToList();
+			// Unlike dynamic cycling, the indicator keeps cycle-excluded clients in the grid - a
+			// square is the only way to toggle exclusion back off, so hiding it here would strand
+			// it (shift-click mirrors the same gesture on the real thumbnail).
+			List<KeyValuePair<IntPtr, IThumbnailView>> candidates = this._thumbnailViews.ToList();
 
 			List<List<KeyValuePair<IntPtr, IThumbnailView>>> rows = ThumbnailManager.GroupThumbnailsIntoRows(candidates);
 
@@ -951,7 +953,12 @@ namespace EveFPreview.Services
 				.OrderBy(row => row.Min(x => x.Value.ThumbnailLocation.Y))
 				.Select(row => (IReadOnlyList<CharacterIndicatorCell>)row
 					.OrderBy(x => x.Value.ThumbnailLocation.X)
-					.Select(x => new CharacterIndicatorCell(x.Key, x.Value.Title, x.Key == this._activeClient.Handle, this._configuration.IsThumbnailDisabled(x.Value.Title)))
+					.Select(x => new CharacterIndicatorCell(
+						x.Key,
+						x.Value.Title,
+						x.Key == this._activeClient.Handle,
+						this._configuration.IsThumbnailDisabled(x.Value.Title),
+						x.Value.IsExcludedFromCycleGroup))
 					.ToList())
 				.ToList();
 
