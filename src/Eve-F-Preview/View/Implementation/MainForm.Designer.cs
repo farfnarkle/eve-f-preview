@@ -83,6 +83,8 @@ namespace EveFPreview.View
 			EnableCharacterIndicatorClickToActivateCheckBox = new CheckBox();
 			MinimizeToTrayCheckBox = new CheckBox();
 			StartMinimizedCheckBox = new CheckBox();
+			CheckForUpdatesCheckBox = new CheckBox();
+			UpdateLink = new LinkLabel();
 			CloseAllEveClientsButton = new Button();
 			label1 = new Label();
 			PreventPreviewColorButton = new Panel();
@@ -318,6 +320,7 @@ namespace EveFPreview.View
 			GeneralSettingsPanel.Controls.Add(AutoSettingsSyncStatusLabel);
 			GeneralSettingsPanel.Controls.Add(MinimizeToTrayCheckBox);
 			GeneralSettingsPanel.Controls.Add(StartMinimizedCheckBox);
+			GeneralSettingsPanel.Controls.Add(CheckForUpdatesCheckBox);
 			GeneralSettingsPanel.Controls.Add(CloseAllEveClientsButton);
 			GeneralSettingsPanel.Dock = DockStyle.Fill;
 			GeneralSettingsPanel.Location = new Point(4, 4);
@@ -559,6 +562,31 @@ namespace EveFPreview.View
 			StartMinimizedCheckBox.Text = "Start minimized";
 			StartMinimizedCheckBox.UseVisualStyleBackColor = true;
 			StartMinimizedCheckBox.CheckedChanged += OptionChanged_Handler;
+			// 
+			// CheckForUpdatesCheckBox
+			// 
+			CheckForUpdatesCheckBox.AutoSize = true;
+			CheckForUpdatesCheckBox.Checked = true;
+			CheckForUpdatesCheckBox.CheckState = CheckState.Checked;
+			CheckForUpdatesCheckBox.Location = new Point(9, 50);
+			CheckForUpdatesCheckBox.Margin = new Padding(4);
+			CheckForUpdatesCheckBox.Name = "CheckForUpdatesCheckBox";
+			CheckForUpdatesCheckBox.Size = new Size(140, 19);
+			CheckForUpdatesCheckBox.TabIndex = 20;
+			CheckForUpdatesCheckBox.Text = "Check for updates";
+			CheckForUpdatesCheckBox.UseVisualStyleBackColor = true;
+			CheckForUpdatesCheckBox.CheckedChanged += OptionChanged_Handler;
+			// 
+			// UpdateLink
+			// 
+			UpdateLink.AutoSize = true;
+			UpdateLink.Location = new Point(9, 28);
+			UpdateLink.Margin = new Padding(4, 0, 4, 0);
+			UpdateLink.Name = "UpdateLink";
+			UpdateLink.TabIndex = 8;
+			UpdateLink.TabStop = true;
+			UpdateLink.Visible = false;
+			UpdateLink.LinkClicked += DocumentationLinkClicked_Handler;
 			// 
 			// CloseAllEveClientsButton
 			// 
@@ -1746,6 +1774,7 @@ namespace EveFPreview.View
 			AboutPanel.Controls.Add(DocumentationLinkLabel);
 			AboutPanel.Controls.Add(DescriptionLabel);
 			AboutPanel.Controls.Add(VersionLabel);
+			AboutPanel.Controls.Add(UpdateLink);
 			AboutPanel.Controls.Add(NameLabel);
 			AboutPanel.Controls.Add(DocumentationLink);
 			AboutPanel.Dock = DockStyle.Fill;
@@ -1918,6 +1947,8 @@ namespace EveFPreview.View
 		private CheckBox EnableCharacterIndicatorClickToActivateCheckBox;
 		private CheckBox MinimizeToTrayCheckBox;
 		private CheckBox StartMinimizedCheckBox;
+		private CheckBox CheckForUpdatesCheckBox;
+		private LinkLabel UpdateLink;
 		private Button CloseAllEveClientsButton;
 		private NumericUpDown ThumbnailsWidthNumericEdit;
 		private NumericUpDown ThumbnailsHeightNumericEdit;

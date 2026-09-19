@@ -37,6 +37,10 @@ namespace EveFPreview.Configuration
 
 		bool MinimizeToTray { get; set; }
 		bool StartMinimized { get; set; }
+		/// <summary>Periodically ask GitHub whether a newer release exists (notify only - never downloads anything).</summary>
+		bool CheckForUpdates { get; set; }
+		/// <summary>Release version the user chose "don't show again" for; the update popup skips it (a newer release shows again).</summary>
+		string SkippedUpdateVersion { get; set; }
 		int ThumbnailRefreshPeriod { get; set; }
 		int ThumbnailResizeTimeoutPeriod { get; set; }
 		bool EnableWineCompatibilityMode { get; set; }

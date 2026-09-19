@@ -238,6 +238,7 @@ namespace EveFPreview.View
 
 		internal static class Text
 		{
+			public const string CheckForUpdates = "Check GitHub for a newer release on startup and every 12 hours. Only shows a notice - nothing is downloaded or installed.";
 			public const string TrackClientLocations = "Restore EVE window positions when clients are detected.";
 			public const string HideCaptionBar = "Hide the Windows title bar on EVE client windows.";
 			public const string CycleHotkeysWhenEveActive = "Avoid stealing cycle hotkeys when you are not in EVE.";

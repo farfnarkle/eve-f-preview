@@ -179,6 +179,7 @@ namespace EveFPreview.View
 
 			SettingsHelp.AddRow(table, this.MinimizeToTrayCheckBox);
 			SettingsHelp.AddRow(table, this.StartMinimizedCheckBox);
+			SettingsHelp.AddRow(table, this.CheckForUpdatesCheckBox, SettingsHelp.Text.CheckForUpdates);
 			SettingsHelp.AddRow(table, this.EnableClientLayoutTrackingCheckBox, SettingsHelp.Text.TrackClientLocations);
 			SettingsHelp.AddRow(table, this.HideActiveClientThumbnailCheckBox);
 			SettingsHelp.AddRow(table, this.HideCaptionOnClientsCheckBox, SettingsHelp.Text.HideCaptionBar);
@@ -581,6 +582,12 @@ namespace EveFPreview.View
 		{
 			get => this.StartMinimizedCheckBox.Checked;
 			set => this.StartMinimizedCheckBox.Checked = value;
+		}
+
+		public bool CheckForUpdates
+		{
+			get => this.CheckForUpdatesCheckBox.Checked;
+			set => this.CheckForUpdatesCheckBox.Checked = value;
 		}
 
 		public string IconName
@@ -1057,6 +1064,40 @@ namespace EveFPreview.View
 		{
 			this.VersionLabel.Text = version;
 		}
+
+		public void SetUpdateAvailable(string version, string url, bool showPopup)
+		{
+			string text = "Update available: " + version + " - click to view";
+			this.UpdateLink.Links.Clear();
+			this.UpdateLink.Text = text;
+			this.UpdateLink.Links.Add(0, text.Length, url);
+			this.UpdateLink.Visible = true;
+
+			// The About tab link is easy to miss, so also pop up a small dialog - once per version
+			// per run, and never for a version the user asked not to be told about again.
+			if (!showPopup || this._updatePopupShownFor == version || this._updatePopup != null)
+			{
+				return;
+			}
+
+			this._updatePopupShownFor = version;
+			this._updatePopup = new UpdateAvailableForm(this.VersionLabel.Text, version, url, this.DocumentationLinkActivated);
+			this._updatePopup.FormClosed += (s, e) =>
+			{
+				bool dontShowAgain = this._updatePopup != null && this._updatePopup.DontShowAgain;
+				this._updatePopup = null;
+				if (dontShowAgain)
+				{
+					this.UpdateVersionDismissed?.Invoke(version);
+				}
+			};
+			this._updatePopup.Show();
+		}
+
+		public Action<string> UpdateVersionDismissed { get; set; }
+
+		private string _updatePopupShownFor;
+		private UpdateAvailableForm _updatePopup;
 
 		public void SetDocumentationUrl(string url)
 		{

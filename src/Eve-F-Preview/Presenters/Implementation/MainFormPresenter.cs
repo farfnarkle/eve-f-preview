@@ -30,6 +30,7 @@ namespace EveFPreview.Presenters
 
 		private bool _exitApplication;
 		private bool _portraitRefreshInProgress;
+		private bool _updateChecksStarted;
 		#endregion
 
 		public MainFormPresenter(IApplicationController controller, IMainFormView view, IMediator mediator, IThumbnailConfiguration configuration, IConfigurationStorage configurationStorage, IProcessMonitor processMonitor, IThumbnailManager thumbnailManager, ICharacterPortraitService characterPortraitService)
@@ -63,6 +64,11 @@ namespace EveFPreview.Presenters
 			this.View.RefreshPortraitsRequested = this.RefreshPortraits;
 			this.View.SetConfigurationStorage(this._configurationStorage);
 			this.View.ConfigProfileChanged = this.ReloadApplicationSettingsAfterProfileChange;
+			this.View.UpdateVersionDismissed = version =>
+			{
+				this._configuration.SkippedUpdateVersion = version;
+				this._configurationStorage.Save();
+			};
 			this._thumbnailManager.AutoSettingsSyncStatusReported = (success, message) =>
 				this.View.SetAutoSettingsSyncStatus(success, message);
 
@@ -85,11 +91,47 @@ namespace EveFPreview.Presenters
 
 				this._mediator.Send(new StartService());
 				this._characterPortraitService.SyncMissingPortraitsFromConfiguration();
+				this.StartUpdateChecks();
 			}
 			finally
 			{
 				this.View.EndLoadSettings();
 				this._suppressSizeNotifications = false;
+			}
+		}
+
+		/// <summary>
+		/// Notify-only: asks GitHub for the latest release on startup and every 12 hours, and tells the
+		/// view when it's newer than this build. Honors the "Check for updates" setting each round.
+		/// </summary>
+		private async void StartUpdateChecks()
+		{
+			if (this._updateChecksStarted)
+			{
+				return;
+			}
+
+			this._updateChecksStarted = true;
+
+			Version current = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
+			if (current == null)
+			{
+				return;
+			}
+
+			while (!this._exitApplication)
+			{
+				if (this._configuration.CheckForUpdates)
+				{
+					UpdateChecker.UpdateInfo update = await UpdateChecker.CheckAsync(current).ConfigureAwait(true);
+					if (update != null)
+					{
+						bool showPopup = !string.Equals(this._configuration.SkippedUpdateVersion, update.Tag, StringComparison.OrdinalIgnoreCase);
+						this.View.SetUpdateAvailable(update.Tag, update.Url, showPopup);
+					}
+				}
+
+				await System.Threading.Tasks.Task.Delay(TimeSpan.FromHours(12)).ConfigureAwait(true);
 			}
 		}
 
@@ -169,6 +211,7 @@ namespace EveFPreview.Presenters
 
 			this.View.MinimizeToTray = this._configuration.MinimizeToTray;
 			this.View.StartMinimized = this._configuration.StartMinimized;
+			this.View.CheckForUpdates = this._configuration.CheckForUpdates;
 
 			this.View.ThumbnailOpacity = this._configuration.ThumbnailOpacity;
 
@@ -297,6 +340,7 @@ namespace EveFPreview.Presenters
 		{
 			this._configuration.MinimizeToTray = this.View.MinimizeToTray;
 			this._configuration.StartMinimized = this.View.StartMinimized;
+			this._configuration.CheckForUpdates = this.View.CheckForUpdates;
 
 			this._configuration.ThumbnailOpacity = (float)this.View.ThumbnailOpacity;
 

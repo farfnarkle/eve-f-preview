@@ -107,6 +107,8 @@ namespace EveFPreview.Configuration.Implementation
 
 			this.MinimizeToTray = false;
 			this.StartMinimized = false;
+			this.CheckForUpdates = true;
+			this.SkippedUpdateVersion = string.Empty;
 			this.ThumbnailRefreshPeriod = 500;
 			this.ThumbnailResizeTimeoutPeriod = 500;
 
@@ -264,6 +266,8 @@ namespace EveFPreview.Configuration.Implementation
 		public Dictionary<string, ZoomAnchor> PerClientZoomAnchor{ get; set; }
 		public bool MinimizeToTray { get; set; }
 		public bool StartMinimized { get; set; }
+		public bool CheckForUpdates { get; set; }
+		public string SkippedUpdateVersion { get; set; }
 		public int ThumbnailRefreshPeriod { get; set; }
 		public int ThumbnailResizeTimeoutPeriod { get; set; }
 

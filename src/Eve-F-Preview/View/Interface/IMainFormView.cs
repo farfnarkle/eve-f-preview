@@ -13,6 +13,13 @@ namespace EveFPreview.View
 	{
 		bool MinimizeToTray { get; set; }
 		bool StartMinimized { get; set; }
+		bool CheckForUpdates { get; set; }
+
+		/// <summary>Shows that a newer release exists: a link on the About tab, plus a popup when <paramref name="showPopup"/> is set.</summary>
+		void SetUpdateAvailable(string version, string url, bool showPopup);
+
+		/// <summary>Raised (with the version) when the user closes the update popup with "don't show again" ticked.</summary>
+		Action<string> UpdateVersionDismissed { get; set; }
 
 		double ThumbnailOpacity { get; set; }
 
