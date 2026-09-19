@@ -28,6 +28,8 @@ namespace EveFPreview.UI.Hotkeys
 	{
 		private const byte VirtualKeyCode = 0xE8;
 		private const int FirstHotkeyId = 0xBF00; // High range, unlikely to collide with HotkeyHandler's own IDs.
+		private const int WaitForForegroundMilliseconds = 150; // Upper bound for the OS to finish a foreground switch (observed: usually <25ms, occasionally >40ms).
+		private const int MismatchGraceMilliseconds = 20; // How long a different, real foreground window may persist before we call the switch refused.
 		private const int WatchdogMilliseconds = 500; // Recovery only: a synthetic press should be consumed in well under this.
 
 		private static readonly uint[] ModifierCombinations = BuildModifierCombinations();
@@ -77,6 +79,108 @@ namespace EveFPreview.UI.Hotkeys
 			Enqueue(handle, onCompleted);
 		}
 
+		/// <summary>
+		/// True once the real foreground window is <paramref name="handle"/>. Right after a
+		/// SetForegroundWindow the OS briefly reports NO foreground window (observed as 0x0 for
+		/// roughly 15ms) while the switch completes, so a single immediate check reads that
+		/// transient as a failure and needlessly escalates. Poll until it settles instead.
+		/// </summary>
+		private static bool WaitForForeground(IntPtr handle, int maxMilliseconds = WaitForForegroundMilliseconds)
+		{
+			long freq = System.Diagnostics.Stopwatch.Frequency;
+			long start = System.Diagnostics.Stopwatch.GetTimestamp();
+			long hardDeadline = start + (freq * maxMilliseconds / 1000);
+			long mismatchSince = 0;
+
+			while (true)
+			{
+				IntPtr foreground = User32NativeMethods.GetForegroundWindow();
+				long now = System.Diagnostics.Stopwatch.GetTimestamp();
+
+				if (foreground == handle)
+				{
+					return true;
+				}
+
+				if (foreground == IntPtr.Zero)
+				{
+					// Mid-switch: no foreground window yet. Not a refusal - keep waiting.
+					mismatchSince = 0;
+				}
+				else
+				{
+					// Some other window is (still) in front. It may just not have flipped yet, but if
+					// it stays that way for a moment the switch was refused.
+					if (mismatchSince == 0)
+					{
+						mismatchSince = now;
+					}
+					else if (now - mismatchSince >= freq * MismatchGraceMilliseconds / 1000)
+					{
+						return false;
+					}
+				}
+
+				if (now >= hardDeadline)
+				{
+					return false;
+				}
+
+				System.Threading.Thread.Sleep(0);
+			}
+		}
+
+		/// <summary>
+		/// Tries progressively heavier ways of forcing <paramref name="handle"/> to the foreground,
+		/// stopping as soon as the real foreground window matches. A plain SetForegroundWindow can
+		/// still be refused (foreground lock, or the previous foreground thread owning input), so a
+		/// single failed attempt used to leave the thumbnail/indicator advanced with the client
+		/// not actually swapped.
+		/// </summary>
+		private static bool TryBringToForeground(IntPtr handle)
+		{
+			User32NativeMethods.SetForegroundWindow(handle);
+			if (WaitForForeground(handle))
+			{
+				return true;
+			}
+
+			// Share input state with the current foreground thread so the OS treats us as allowed to change it.
+			IntPtr foreground = User32NativeMethods.GetForegroundWindow();
+			uint foregroundThread = foreground != IntPtr.Zero
+				? User32NativeMethods.GetWindowThreadProcessId(foreground, out _)
+				: 0;
+			uint currentThread = User32NativeMethods.GetCurrentThreadId();
+
+			bool attached = foregroundThread != 0
+				&& foregroundThread != currentThread
+				&& User32NativeMethods.AttachThreadInput(currentThread, foregroundThread, true);
+			try
+			{
+				User32NativeMethods.BringWindowToTop(handle);
+				User32NativeMethods.SetForegroundWindow(handle);
+			}
+			finally
+			{
+				if (attached)
+				{
+					User32NativeMethods.AttachThreadInput(currentThread, foregroundThread, false);
+				}
+			}
+
+			if (WaitForForeground(handle))
+			{
+				return true;
+			}
+
+			// Last resort: a bare Alt tap is the classic way to lift the foreground lock.
+			User32NativeMethods.keybd_event(User32NativeMethods.VK_MENU, 0, 0, UIntPtr.Zero);
+			User32NativeMethods.keybd_event(User32NativeMethods.VK_MENU, 0, User32NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
+			User32NativeMethods.SetForegroundWindow(handle);
+
+			return WaitForForeground(handle);
+		}
+
 		private static void Enqueue(IntPtr handle, Action<bool> onCompleted)
 		{
 			bool shouldFire;
@@ -98,7 +202,7 @@ namespace EveFPreview.UI.Hotkeys
 						User32NativeMethods.SetForegroundWindow(handle);
 					}
 
-					directSucceeded = User32NativeMethods.GetForegroundWindow() == handle;
+					directSucceeded = WaitForForeground(handle);
 				}
 
 				if (directSucceeded)
@@ -215,13 +319,7 @@ namespace EveFPreview.UI.Hotkeys
 				_pressInFlight = fireNext;
 			}
 
-			// Two attempts, mirroring the same defensive retry other activation-via-hotkey tools use.
-			if (!User32NativeMethods.SetForegroundWindow(activation.Handle))
-			{
-				User32NativeMethods.SetForegroundWindow(activation.Handle);
-			}
-
-			bool confirmed = User32NativeMethods.GetForegroundWindow() == activation.Handle;
+			bool confirmed = ForegroundActivator.TryBringToForeground(activation.Handle);
 			activation.OnCompleted?.Invoke(confirmed);
 
 			if (fireNext)

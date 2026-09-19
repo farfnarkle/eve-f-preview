@@ -35,6 +35,22 @@ namespace EveFPreview.Services.Interop
 		[DllImport("user32.dll")]
 		public static extern bool SetForegroundWindow(IntPtr window);
 
+		[DllImport("user32.dll")]
+		public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, [MarshalAs(UnmanagedType.Bool)] bool fAttach);
+
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool BringWindowToTop(IntPtr hWnd);
+
+		[DllImport("kernel32.dll")]
+		public static extern uint GetCurrentThreadId();
+
+		public const byte VK_MENU = 0x12;
+
 		public const uint KEYEVENTF_KEYUP = 0x0002;
 
 		[DllImport("user32.dll")]
