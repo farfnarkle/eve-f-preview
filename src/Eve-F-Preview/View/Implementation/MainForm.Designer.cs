@@ -73,6 +73,7 @@ namespace EveFPreview.View
 			ShowThumbnailsAlwaysOnTopCheckBox = new CheckBox();
 			HideThumbnailsOnLostFocusCheckBox = new CheckBox();
 			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox = new CheckBox();
+			EnableCycleMouseDoubleClickProtectionCheckBox = new CheckBox();
 			DynamicCycleGroupCheckBox = new CheckBox();
 			EnableAccountBasedThumbnailPositioningCheckBox = new CheckBox();
 			EnableAutoSettingsSyncCheckBox = new CheckBox();
@@ -313,6 +314,7 @@ namespace EveFPreview.View
 			GeneralSettingsPanel.Controls.Add(ShowThumbnailsAlwaysOnTopCheckBox);
 			GeneralSettingsPanel.Controls.Add(HideThumbnailsOnLostFocusCheckBox);
 			GeneralSettingsPanel.Controls.Add(OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox);
+			GeneralSettingsPanel.Controls.Add(EnableCycleMouseDoubleClickProtectionCheckBox);
 			GeneralSettingsPanel.Controls.Add(DynamicCycleGroupCheckBox);
 			GeneralSettingsPanel.Controls.Add(EnableAccountBasedThumbnailPositioningCheckBox);
 			GeneralSettingsPanel.Controls.Add(EnablePerClientThumbnailsLayoutsCheckBox);
@@ -442,6 +444,18 @@ namespace EveFPreview.View
 			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.Text = "Only register cycle hotkeys when EVE is active";
 			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.UseVisualStyleBackColor = true;
 			OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.CheckedChanged += OptionChanged_Handler;
+			// 
+			// EnableCycleMouseDoubleClickProtectionCheckBox
+			// 
+			EnableCycleMouseDoubleClickProtectionCheckBox.AutoSize = true;
+			EnableCycleMouseDoubleClickProtectionCheckBox.Location = new Point(9, 178);
+			EnableCycleMouseDoubleClickProtectionCheckBox.Margin = new Padding(4);
+			EnableCycleMouseDoubleClickProtectionCheckBox.Name = "EnableCycleMouseDoubleClickProtectionCheckBox";
+			EnableCycleMouseDoubleClickProtectionCheckBox.Size = new Size(280, 19);
+			EnableCycleMouseDoubleClickProtectionCheckBox.TabIndex = 32;
+			EnableCycleMouseDoubleClickProtectionCheckBox.Text = "Ignore double-clicks on cycle mouse buttons";
+			EnableCycleMouseDoubleClickProtectionCheckBox.UseVisualStyleBackColor = true;
+			EnableCycleMouseDoubleClickProtectionCheckBox.CheckedChanged += OptionChanged_Handler;
 			// 
 			// DynamicCycleGroupCheckBox
 			// 
@@ -1937,6 +1951,7 @@ namespace EveFPreview.View
 		private CheckBox ShowThumbnailsAlwaysOnTopCheckBox;
 		private CheckBox HideThumbnailsOnLostFocusCheckBox;
 		private CheckBox OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox;
+		private CheckBox EnableCycleMouseDoubleClickProtectionCheckBox;
 		private CheckBox DynamicCycleGroupCheckBox;
 		private CheckBox EnableAccountBasedThumbnailPositioningCheckBox;
 		private CheckBox EnableAutoSettingsSyncCheckBox;

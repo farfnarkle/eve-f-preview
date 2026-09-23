@@ -142,6 +142,7 @@ namespace EveFPreview.Configuration.Implementation
 
 			this.HideThumbnailsOnLostFocus = false;
 			this.OnlyRegisterCycleHotkeysWhenEveFocused = true;
+			this.EnableCycleMouseDoubleClickProtection = false;
 			this.DynamicCycleGroup = false;
 			this.PreventPreviews = false;
 			this.HideThumbnailsDelay = 2; // 2 thumbnails refresh cycles (1.0 sec)
@@ -316,6 +317,8 @@ namespace EveFPreview.Configuration.Implementation
 		public bool HideThumbnailsOnLostFocus { get; set; }
 		[JsonProperty("OnlyRegisterCycleHotkeysWhenEveFocused")]
 		public bool OnlyRegisterCycleHotkeysWhenEveFocused { get; set; }
+		[JsonProperty("EnableCycleMouseDoubleClickProtection")]
+		public bool EnableCycleMouseDoubleClickProtection { get; set; }
 		[JsonProperty("DynamicCycleGroup")]
 		public bool DynamicCycleGroup { get; set; }
 

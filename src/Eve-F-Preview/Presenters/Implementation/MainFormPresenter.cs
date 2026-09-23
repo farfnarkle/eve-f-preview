@@ -224,6 +224,7 @@ namespace EveFPreview.Presenters
 			this.View.PreventPreviews = this._configuration.PreventPreviews;
 			this.View.HideThumbnailsOnLostFocus = this._configuration.HideThumbnailsOnLostFocus;
 			this.View.OnlyRegisterCycleHotkeysWhenEveFocused = this._configuration.OnlyRegisterCycleHotkeysWhenEveFocused;
+			this.View.EnableCycleMouseDoubleClickProtection = this._configuration.EnableCycleMouseDoubleClickProtection;
 			this.View.DynamicCycleGroup = this._configuration.DynamicCycleGroup;
 			this.View.EnableAccountBasedThumbnailPositioning = this._configuration.EnableAccountBasedThumbnailPositioning;
 			this.View.EnableAutoSettingsSync = this._configuration.EnableAutoSettingsSync;
@@ -366,6 +367,7 @@ namespace EveFPreview.Presenters
 
 			this._configuration.HideThumbnailsOnLostFocus = this.View.HideThumbnailsOnLostFocus;
 			this._configuration.OnlyRegisterCycleHotkeysWhenEveFocused = this.View.OnlyRegisterCycleHotkeysWhenEveFocused;
+			this._configuration.EnableCycleMouseDoubleClickProtection = this.View.EnableCycleMouseDoubleClickProtection;
 			bool dynamicCycleChanged = this._configuration.DynamicCycleGroup != this.View.DynamicCycleGroup;
 			this._configuration.DynamicCycleGroup = this.View.DynamicCycleGroup;
 			if (dynamicCycleChanged)

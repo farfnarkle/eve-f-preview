@@ -242,6 +242,7 @@ namespace EveFPreview.View
 			public const string TrackClientLocations = "Restore EVE window positions when clients are detected.";
 			public const string HideCaptionBar = "Hide the Windows title bar on EVE client windows.";
 			public const string CycleHotkeysWhenEveActive = "Avoid stealing cycle hotkeys when you are not in EVE.";
+			public const string CycleMouseDoubleClickProtection = "Some side buttons register one press as two clicks and skip a client. When this is on, only that extra click is ignored, so you can still cycle as fast as you press.";
 			public const string DynamicCycleGroup = "When enabled, cycle in on-screen thumbnail order. Shortcuts then show Dynamic cycle hotkeys instead of numbered groups.";
 			public const string AccountBasedPositioning = "Remember thumbnail positions per EVE account.";
 			public const string UniqueLayout = "Store a separate thumbnail layout for each EVE client.";

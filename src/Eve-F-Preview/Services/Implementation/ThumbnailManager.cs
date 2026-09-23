@@ -29,6 +29,9 @@ namespace EveFPreview.Services
 		// confirmed failure now corrects immediately via ReconcileActiveClientWithRealForeground
 		// instead of waiting this out.
 		private const int ACTIVATION_GRACE_PERIOD_MS = 200;
+		// Switch bounce from a faulty side button lands well inside this. A real
+		// follow-up press is slower, so cycling stays responsive.
+		private const int MOUSE_CYCLE_DOUBLE_CLICK_GUARD_MS = 100;
 
 		private const string DEFAULT_CLIENT_TITLE = "EVE";
 		#endregion
@@ -61,6 +64,7 @@ namespace EveFPreview.Services
 
 		private List<HotkeyHandler> _cycleClientHotkeyHandlers = new List<HotkeyHandler>();
 		private List<HotkeyHandler> _dynamicCycleHotkeyHandlers = new List<HotkeyHandler>();
+		private readonly Dictionary<Keys, long> _mouseCycleAcceptedAtMs = new Dictionary<Keys, long>();
 		private List<HotkeyHandler> _minimizeAllHotkeyHandlers = new List<HotkeyHandler>();
 		private List<HotkeyHandler> _toggleThumbnailsHotkeyHandlers = new List<HotkeyHandler>();
 		private bool _manualHideAllThumbnails;
@@ -487,6 +491,12 @@ namespace EveFPreview.Services
 				var newHandler = new HotkeyHandler(this.GetGlobalHotkeyTarget(), hotkey);
 				newHandler.Pressed += (object s, HandledEventArgs e) =>
 				{
+					if (!this.TryAcceptMouseCyclePress(hotkey))
+					{
+						e.Handled = true;
+						return;
+					}
+
 					this.InvokeOnUiThread(() => this.CycleNextClient(isForwards, cycleOrder));
 					e.Handled = true;
 				};
@@ -520,12 +530,48 @@ namespace EveFPreview.Services
 				var newHandler = new HotkeyHandler(this.GetGlobalHotkeyTarget(), hotkey);
 				newHandler.Pressed += (object s, HandledEventArgs e) =>
 				{
+					if (!this.TryAcceptMouseCyclePress(hotkey))
+					{
+						e.Handled = true;
+						return;
+					}
+
 					this.InvokeOnUiThread(() => this.CycleNextClientByThumbnailPosition(isForwards, emptyCycleOrder));
 					e.Handled = true;
 				};
 
 				this._dynamicCycleHotkeyHandlers.Add(newHandler);
 			}
+		}
+
+		/// <summary>
+		/// Faulty side buttons emit a second click a few tens of milliseconds after the first.
+		/// When protection is on, only that bounce is swallowed. A later press still cycles.
+		/// Keyboard cycle hotkeys are unchanged.
+		/// </summary>
+		private bool TryAcceptMouseCyclePress(Keys hotkey)
+		{
+			if (!MouseButtonHotkeyMonitor.IsExtraMouseButton(hotkey))
+			{
+				return true;
+			}
+
+			if (!this._configuration.EnableCycleMouseDoubleClickProtection)
+			{
+				return true;
+			}
+
+			Keys button = hotkey & Keys.KeyCode;
+			long now = Environment.TickCount64;
+			if (this._mouseCycleAcceptedAtMs.TryGetValue(button, out long acceptedAt)
+				&& unchecked(now - acceptedAt) >= 0
+				&& unchecked(now - acceptedAt) < ThumbnailManager.MOUSE_CYCLE_DOUBLE_CLICK_GUARD_MS)
+			{
+				return false;
+			}
+
+			this._mouseCycleAcceptedAtMs[button] = now;
+			return true;
 		}
 
 		/// <summary>

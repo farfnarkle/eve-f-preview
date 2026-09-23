@@ -186,6 +186,7 @@ namespace EveFPreview.View
 			SettingsHelp.AddRow(table, this.ShowThumbnailsAlwaysOnTopCheckBox);
 			SettingsHelp.AddRow(table, this.HideThumbnailsOnLostFocusCheckBox);
 			SettingsHelp.AddRow(table, this.OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox, SettingsHelp.Text.CycleHotkeysWhenEveActive);
+			SettingsHelp.AddRow(table, this.EnableCycleMouseDoubleClickProtectionCheckBox, SettingsHelp.Text.CycleMouseDoubleClickProtection);
 			SettingsHelp.AddRow(table, this.DynamicCycleGroupCheckBox, SettingsHelp.Text.DynamicCycleGroup);
 			SettingsHelp.AddRow(table, this.EnableAccountBasedThumbnailPositioningCheckBox, SettingsHelp.Text.AccountBasedPositioning);
 			SettingsHelp.AddRow(table, this.EnablePerClientThumbnailsLayoutsCheckBox, SettingsHelp.Text.UniqueLayout);
@@ -696,6 +697,12 @@ namespace EveFPreview.View
 		{
 			get => this.OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.Checked;
 			set => this.OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox.Checked = value;
+		}
+
+		public bool EnableCycleMouseDoubleClickProtection
+		{
+			get => this.EnableCycleMouseDoubleClickProtectionCheckBox.Checked;
+			set => this.EnableCycleMouseDoubleClickProtectionCheckBox.Checked = value;
 		}
 
 		public bool DynamicCycleGroup

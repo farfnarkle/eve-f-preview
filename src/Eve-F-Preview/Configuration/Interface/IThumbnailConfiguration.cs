@@ -75,6 +75,11 @@ namespace EveFPreview.Configuration
 		bool PreventPreviews { get; set; }
 		bool HideThumbnailsOnLostFocus { get; set; }
 		bool OnlyRegisterCycleHotkeysWhenEveFocused { get; set; }
+		/// <summary>
+		/// When a cycle hotkey is a mouse button, ignore a second click of that button that arrives
+		/// within a short bounce window. Faulty side buttons often register one press as two clicks.
+		/// </summary>
+		bool EnableCycleMouseDoubleClickProtection { get; set; }
 		bool DynamicCycleGroup { get; set; }
 		int HideThumbnailsDelay { get; set; }
 

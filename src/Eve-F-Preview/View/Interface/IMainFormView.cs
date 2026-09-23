@@ -32,6 +32,7 @@ namespace EveFPreview.View
 		bool PreventPreviews { get; set; }
 		bool HideThumbnailsOnLostFocus { get; set; }
 		bool OnlyRegisterCycleHotkeysWhenEveFocused { get; set; }
+		bool EnableCycleMouseDoubleClickProtection { get; set; }
 		bool DynamicCycleGroup { get; set; }
 		bool EnableAccountBasedThumbnailPositioning { get; set; }
 		bool EnableAutoSettingsSync { get; set; }
