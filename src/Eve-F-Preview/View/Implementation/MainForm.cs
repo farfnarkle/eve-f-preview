@@ -29,7 +29,7 @@ namespace EveFPreview.View
 		private System.Windows.Forms.Button _loadConfigProfileButton;
 		private System.Windows.Forms.Button _saveConfigProfileAsButton;
 		private System.Windows.Forms.Button _importConfigProfileButton;
-		private Panel _configProfilePanel;
+		private TableLayoutPanel _configProfilePanel;
 		#endregion
 
 		public MainForm(ApplicationContext context)
@@ -86,29 +86,29 @@ namespace EveFPreview.View
 				this._importConfigProfileButton);
 		}
 
+		/// <summary>
+		/// This used to wrap the table below in a plain AutoSize Panel with the table Dock=Top inside
+		/// it. A plain Panel's AutoSize doesn't participate in layout for a docked child - it reported
+		/// an empty preferred size, so the whole row (label, dropdown, Load/Save As/Import buttons)
+		/// collapsed to nothing next to its help icon on the General tab. Building the table itself as
+		/// _configProfilePanel avoids that: SettingsHelp.AddRow already Dock=Fills a TableLayoutPanel
+		/// it's handed, and a TableLayoutPanel reliably reports its own preferred size.
+		/// </summary>
 		private void InitConfigProfileControls()
 		{
-			this._configProfilePanel = new Panel
-			{
-				AutoSize = true,
-				AutoSizeMode = AutoSizeMode.GrowAndShrink,
-				Margin = new Padding(0)
-			};
-
-			var layout = new TableLayoutPanel
+			this._configProfilePanel = new TableLayoutPanel
 			{
 				AutoSize = true,
 				AutoSizeMode = AutoSizeMode.GrowAndShrink,
 				ColumnCount = 3,
-				Dock = DockStyle.Top,
 				Margin = new Padding(0)
 			};
-			layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
-			layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F));
-			layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
-			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			this._configProfilePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
+			this._configProfilePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F));
+			this._configProfilePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
+			this._configProfilePanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			this._configProfilePanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			this._configProfilePanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
 			var label = new Label
 			{
@@ -116,8 +116,8 @@ namespace EveFPreview.View
 				Margin = new Padding(0, 0, 0, 4),
 				Text = "Config profile"
 			};
-			layout.Controls.Add(label, 0, 0);
-			layout.SetColumnSpan(label, 3);
+			this._configProfilePanel.Controls.Add(label, 0, 0);
+			this._configProfilePanel.SetColumnSpan(label, 3);
 
 			this._configProfileCombo = new System.Windows.Forms.ComboBox
 			{
@@ -125,8 +125,8 @@ namespace EveFPreview.View
 				DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList,
 				Margin = new Padding(0, 0, 0, 8)
 			};
-			layout.Controls.Add(this._configProfileCombo, 0, 1);
-			layout.SetColumnSpan(this._configProfileCombo, 3);
+			this._configProfilePanel.Controls.Add(this._configProfileCombo, 0, 1);
+			this._configProfilePanel.SetColumnSpan(this._configProfileCombo, 3);
 
 			this._loadConfigProfileButton = new System.Windows.Forms.Button
 			{
@@ -152,11 +152,9 @@ namespace EveFPreview.View
 			this._importConfigProfileButton.Margin = new Padding(4, 0, 0, 0);
 			this._importConfigProfileButton.Click += this.ImportConfigProfileButton_Click;
 
-			layout.Controls.Add(this._loadConfigProfileButton, 0, 2);
-			layout.Controls.Add(this._saveConfigProfileAsButton, 1, 2);
-			layout.Controls.Add(this._importConfigProfileButton, 2, 2);
-
-			this._configProfilePanel.Controls.Add(layout);
+			this._configProfilePanel.Controls.Add(this._loadConfigProfileButton, 0, 2);
+			this._configProfilePanel.Controls.Add(this._saveConfigProfileAsButton, 1, 2);
+			this._configProfilePanel.Controls.Add(this._importConfigProfileButton, 2, 2);
 		}
 
 		private void InitPackedTabLayouts()
@@ -165,6 +163,7 @@ namespace EveFPreview.View
 			this.LayoutThumbnailTab();
 			this.LayoutOverlayTab();
 			this.LayoutZoomTab();
+			this.LayoutAboutTab();
 		}
 
 		private T FindNamed<T>(string name) where T : Control
@@ -302,6 +301,41 @@ namespace EveFPreview.View
 			SettingsHelp.AddRow(
 				table,
 				SettingsHelp.CreateFlow(this.FindNamed<Label>("ZoomAnchorLabel"), this.ZoomAnchorPanel));
+
+			SettingsHelp.HostInScrollPanel(panel, table);
+		}
+
+		/// <summary>
+		/// Previously a fixed-pixel-position layout (every label given an absolute Location), which
+		/// doesn't reflow when the font/DPI it was measured against changes - two controls that
+		/// looked fine at 96 DPI can end up overlapping at a different scale, and UpdateLink landed
+		/// squarely on top of the name/version row here at 100% before this was packed. Same fix as
+		/// the other tabs: flow it through SettingsHelp instead of trusting hand-picked coordinates.
+		/// </summary>
+		private void LayoutAboutTab()
+		{
+			Panel panel = this.FindNamed<Panel>("AboutPanel");
+			TableLayoutPanel table = SettingsHelp.CreateScrollTable();
+
+			// These two were fixed-size boxes sized for the designer's 96 DPI text - AutoSize plus a
+			// max width lets them wrap to fit instead of clipping at a larger font/scale.
+			Label descriptionLabel = this.FindNamed<Label>("DescriptionLabel");
+			descriptionLabel.AutoSize = true;
+			descriptionLabel.MaximumSize = new Size(400, 0);
+
+			Label creditLabel = this.FindNamed<Label>("CreditMaintLabel");
+			creditLabel.AutoSize = true;
+			creditLabel.MaximumSize = new Size(400, 0);
+
+			this.DocumentationLink.AutoSize = true;
+			this.DocumentationLink.MaximumSize = new Size(400, 0);
+
+			SettingsHelp.AddRow(table, SettingsHelp.CreateFlow(this.FindNamed<Label>("NameLabel"), this.VersionLabel));
+			SettingsHelp.AddRow(table, this.UpdateLink);
+			SettingsHelp.AddRow(table, descriptionLabel);
+			SettingsHelp.AddRow(table, creditLabel);
+			SettingsHelp.AddRow(table, this.FindNamed<Label>("DocumentationLinkLabel"));
+			SettingsHelp.AddRow(table, this.DocumentationLink);
 
 			SettingsHelp.HostInScrollPanel(panel, table);
 		}

@@ -144,7 +144,7 @@ namespace EveFPreview.View
 				GrowStyle = TableLayoutPanelGrowStyle.AddRows,
 				Location = new Point(0, 0),
 				Margin = new Padding(0),
-				Padding = new Padding(12, 12, 12, 8)
+				Padding = new Padding(10, 8, 10, 6)
 			};
 			this._layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 			this._layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
@@ -223,7 +223,7 @@ namespace EveFPreview.View
 			{
 				AutoSize = true,
 				Dock = DockStyle.Fill,
-				Margin = new Padding(0, 8, 0, 0),
+				Margin = new Padding(0, 5, 0, 0),
 				Text = "Click Set to record a hotkey (keyboard, mouse 4/5 side buttons, or middle click). Click Clear to remove it. Per-client activation hotkeys are set on the Clients tab (Ctrl+click a character)."
 			};
 			this.AddFullWidthControl(note, SizeType.AutoSize);
@@ -243,7 +243,7 @@ namespace EveFPreview.View
 			if (string.IsNullOrEmpty(helpText))
 			{
 				header.Dock = DockStyle.Fill;
-				header.Margin = new Padding(0, 10, 0, 4);
+				header.Margin = new Padding(0, 6, 0, 3);
 				this.AddFullWidthControl(header, SizeType.AutoSize);
 				return;
 			}
@@ -254,7 +254,7 @@ namespace EveFPreview.View
 				AutoSizeMode = AutoSizeMode.GrowAndShrink,
 				Dock = DockStyle.Fill,
 				FlowDirection = FlowDirection.LeftToRight,
-				Margin = new Padding(0, 10, 0, 4),
+				Margin = new Padding(0, 6, 0, 3),
 				WrapContents = false
 			};
 			flow.Controls.Add(header);
@@ -302,7 +302,7 @@ namespace EveFPreview.View
 			{
 				Anchor = AnchorStyles.Left,
 				AutoSize = true,
-				Margin = new Padding(0, 8, 8, 8),
+				Margin = new Padding(0, 5, 6, 5),
 				Text = labelText,
 				TextAlign = ContentAlignment.MiddleLeft
 			};
@@ -310,7 +310,7 @@ namespace EveFPreview.View
 			var textBox = new TextBox
 			{
 				Dock = DockStyle.Fill,
-				Margin = new Padding(0, 0, 8, 0),
+				Margin = new Padding(0, 0, 6, 0),
 				ReadOnly = true
 			};
 
@@ -322,7 +322,7 @@ namespace EveFPreview.View
 			var fieldPanel = new Panel
 			{
 				Dock = DockStyle.Fill,
-				Margin = new Padding(0, 4, 0, 4)
+				Margin = new Padding(0, 2, 0, 2)
 			};
 			fieldPanel.Controls.Add(textBox);
 			fieldPanel.Controls.Add(setButton);
@@ -348,7 +348,7 @@ namespace EveFPreview.View
 			{
 				Anchor = AnchorStyles.Left,
 				AutoSize = true,
-				Margin = new Padding(0, 8, 8, 8),
+				Margin = new Padding(0, 5, 6, 5),
 				Text = labelText,
 				TextAlign = ContentAlignment.MiddleLeft
 			};
@@ -357,7 +357,7 @@ namespace EveFPreview.View
 			{
 				Dock = DockStyle.Fill,
 				DropDownStyle = ComboBoxStyle.DropDownList,
-				Margin = new Padding(0, 4, 0, 4)
+				Margin = new Padding(0, 2, 0, 2)
 			};
 			this._clickThroughModifierCombo.Items.AddRange(ModifierChoices);
 			this._clickThroughModifierCombo.SelectedIndex = 0;
@@ -438,7 +438,7 @@ namespace EveFPreview.View
 		{
 			var button = new Button
 			{
-				Margin = new Padding(4, 4, 0, 4),
+				Margin = new Padding(3, 3, 0, 3),
 				Text = text
 			};
 			SettingsHelp.StyleActionButton(this, button);

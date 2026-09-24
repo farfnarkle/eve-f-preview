@@ -28,7 +28,7 @@ namespace EveFPreview.View
 				Dock = DockStyle.Top,
 				GrowStyle = TableLayoutPanelGrowStyle.AddRows,
 				Margin = new Padding(0),
-				Padding = new Padding(12)
+				Padding = new Padding(10)
 			};
 			table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 			table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, IconColumnWidth));
@@ -75,7 +75,7 @@ namespace EveFPreview.View
 			if (fillWidth)
 			{
 				button.Dock = DockStyle.Fill;
-				button.Margin = new Padding(0, 8, 0, 4);
+				button.Margin = new Padding(0, 4, 0, 2);
 			}
 			else
 			{
@@ -103,7 +103,7 @@ namespace EveFPreview.View
 				AutoSize = false,
 				Cursor = Cursors.Help,
 				ForeColor = Color.FromArgb(0, 102, 180),
-				Margin = new Padding(0, 6, 0, 0),
+				Margin = new Padding(0, 3, 0, 0),
 				Size = new Size(18, 18),
 				Text = "ⓘ",
 				TextAlign = ContentAlignment.MiddleCenter
@@ -126,7 +126,7 @@ namespace EveFPreview.View
 			table.RowCount++;
 
 			ResetForTable(control);
-			control.Margin = new Padding(indent, 6, 8, 6);
+			control.Margin = new Padding(indent, 3, 6, 3);
 			if (control is ComboBox || control is TrackBar || control is TableLayoutPanel)
 			{
 				control.Dock = DockStyle.Fill;
@@ -152,7 +152,7 @@ namespace EveFPreview.View
 
 			ResetForTable(control);
 			control.Dock = DockStyle.Fill;
-			control.Margin = new Padding(0, 4, 8, 4);
+			control.Margin = new Padding(0, 3, 6, 3);
 			table.Controls.Add(control, 0, rowIndex);
 
 			if (string.IsNullOrEmpty(helpText))
@@ -189,11 +189,11 @@ namespace EveFPreview.View
 				if (control is Button button)
 				{
 					StyleActionButton(flow, button);
-					control.Margin = new Padding(0, 4, 8, 4);
+					control.Margin = new Padding(0, 2, 6, 2);
 				}
 				else
 				{
-					control.Margin = new Padding(0, 2, 8, 2);
+					control.Margin = new Padding(0, 1, 6, 1);
 				}
 
 				flow.Controls.Add(control);
@@ -218,11 +218,11 @@ namespace EveFPreview.View
 			ResetForTable(label);
 			label.Anchor = AnchorStyles.Left;
 			label.AutoSize = true;
-			label.Margin = new Padding(0, 4, 8, 4);
+			label.Margin = new Padding(0, 2, 6, 2);
 
 			ResetForTable(fill);
 			fill.Dock = DockStyle.Fill;
-			fill.Margin = new Padding(0, 2, 0, 2);
+			fill.Margin = new Padding(0, 1, 0, 1);
 
 			inner.Controls.Add(label, 0, 0);
 			inner.Controls.Add(fill, 1, 0);
