@@ -9,6 +9,7 @@ namespace EveFPreview.Configuration.Implementation
 	{
 		private const string CONFIGURATION_FILE_NAME = "EVE-F-Preview.json";
 		private const string LEGACY_CONFIGURATION_FILE_NAME = "EVE-O-Preview.json";
+		private const string BACKUP_SUFFIX = ".bak";
 
 		private readonly IAppConfig _appConfig;
 		private readonly IThumbnailConfiguration _thumbnailConfiguration;
@@ -28,14 +29,35 @@ namespace EveFPreview.Configuration.Implementation
 				return;
 			}
 
-			string rawData = File.ReadAllText(filename);
-
 			JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings()
 			{
 				ObjectCreationHandling = ObjectCreationHandling.Replace
 			};
 
-			JsonConvert.PopulateObject(rawData, this._thumbnailConfiguration, jsonSerializerSettings);
+			try
+			{
+				string rawData = File.ReadAllText(filename);
+				if (string.IsNullOrWhiteSpace(rawData))
+				{
+					throw new JsonSerializationException("Configuration file is empty.");
+				}
+
+				JsonConvert.PopulateObject(rawData, this._thumbnailConfiguration, jsonSerializerSettings);
+			}
+			catch (JsonException)
+			{
+				// Empty or unreadable (older builds saved in place, so a shutdown mid-save could leave
+				// an empty file). Fall back to the copy kept by the previous save; with no usable
+				// copy, rethrow rather than start on defaults and overwrite the file on the next save.
+				string backup = filename + ConfigurationStorage.BACKUP_SUFFIX;
+				string backupData = File.Exists(backup) ? File.ReadAllText(backup) : null;
+				if (string.IsNullOrWhiteSpace(backupData))
+				{
+					throw;
+				}
+
+				JsonConvert.PopulateObject(backupData, this._thumbnailConfiguration, jsonSerializerSettings);
+			}
 
 			this._thumbnailConfiguration.ApplyRestrictions();
 		}
@@ -53,9 +75,23 @@ namespace EveFPreview.Configuration.Implementation
 					Directory.CreateDirectory(directory);
 				}
 
-				File.WriteAllText(filename, rawData);
+				// Write a temp file and swap it in, so the config is never left half-written (or
+				// empty) if the app is killed or the PC shuts down mid-save. The previous version is
+				// kept as the backup Load falls back to - unless it's empty, so an already-damaged
+				// file never replaces a good backup.
+				string tempFile = filename + ".tmp";
+				File.WriteAllText(tempFile, rawData);
+				if (File.Exists(filename))
+				{
+					bool previousIsUsable = new FileInfo(filename).Length > 0;
+					File.Replace(tempFile, filename, previousIsUsable ? filename + ConfigurationStorage.BACKUP_SUFFIX : null, ignoreMetadataErrors: true);
+				}
+				else
+				{
+					File.Move(tempFile, filename);
+				}
 			}
-			catch (IOException)
+			catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
 			{
 				// Ignore error if for some reason the updated config cannot be written down
 			}
