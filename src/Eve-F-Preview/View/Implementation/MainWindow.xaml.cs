@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -66,6 +67,11 @@ namespace EveFPreview.View
 
 		// Saves the window size once the user has finished resizing it.
 		private readonly DispatcherTimer _windowSizeSaveTimer;
+
+		// The window's own size while WindowState is Normal, tracked ourselves because
+		// RestoreBounds can lag behind a resize that happened moments before minimizing/maximizing -
+		// see SettingsWindowSize's getter.
+		private DrawingSize _lastNormalWindowSize;
 		#endregion
 
 		public MainWindow()
@@ -98,11 +104,23 @@ namespace EveFPreview.View
 		{
 			get
 			{
-				// Maximized or minimized: remember the normal size it goes back to.
-				Rect bounds = this.WindowState != WindowState.Normal && !this.RestoreBounds.IsEmpty
-					? this.RestoreBounds
-					: new Rect(0, 0, this.Width, this.Height);
-				return new DrawingSize((int)Math.Round(bounds.Width), (int)Math.Round(bounds.Height));
+				if (this.WindowState == WindowState.Normal)
+				{
+					return new DrawingSize((int)Math.Round(this.Width), (int)Math.Round(this.Height));
+				}
+
+				// Maximized or minimized: RestoreBounds is what WPF/Win32 last recorded as the normal
+				// placement, but it can still reflect a resize from before this one if the state
+				// changed (e.g. minimized) moments after resizing, before that placement was updated -
+				// _lastNormalWindowSize is set synchronously on every normal-state resize, so prefer it.
+				DrawingSize lastNormal = this._lastNormalWindowSize;
+				if (lastNormal.Width > 0 && lastNormal.Height > 0)
+				{
+					return lastNormal;
+				}
+
+				Rect restore = this.RestoreBounds;
+				return restore.IsEmpty ? DrawingSize.Empty : new DrawingSize((int)Math.Round(restore.Width), (int)Math.Round(restore.Height));
 			}
 			set
 			{
@@ -115,6 +133,7 @@ namespace EveFPreview.View
 				Rect workArea = SystemParameters.WorkArea;
 				this.Width = Math.Max(this.MinWidth, Math.Min(value.Width, workArea.Width));
 				this.Height = Math.Max(this.MinHeight, Math.Min(value.Height, workArea.Height));
+				this._lastNormalWindowSize = new DrawingSize((int)Math.Round(this.Width), (int)Math.Round(this.Height));
 			}
 		}
 
@@ -149,6 +168,11 @@ namespace EveFPreview.View
 
 		private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
 		{
+			if (this.WindowState == WindowState.Normal)
+			{
+				this._lastNormalWindowSize = new DrawingSize((int)Math.Round(this.Width), (int)Math.Round(this.Height));
+			}
+
 			// Only sizes the user picks: not the initial layout, and not maximizing.
 			if (!this.IsLoaded || this.WindowState != WindowState.Normal || this._suppressEvents)
 			{
@@ -157,6 +181,24 @@ namespace EveFPreview.View
 
 			this._windowSizeSaveTimer.Stop();
 			this._windowSizeSaveTimer.Start();
+		}
+
+		/// <summary>
+		/// The size save is debounced so a live resize drag doesn't write the config on every pixel,
+		/// but that leaves a window (up to <see cref="_windowSizeSaveTimer"/>'s interval) where a size
+		/// just picked hasn't reached the config yet. Anything that can end the session - closing,
+		/// minimizing to tray - flushes it synchronously first so a quick resize-then-close doesn't
+		/// silently lose the new size.
+		/// </summary>
+		private void FlushPendingWindowSizeSave()
+		{
+			if (!this._windowSizeSaveTimer.IsEnabled)
+			{
+				return;
+			}
+
+			this._windowSizeSaveTimer.Stop();
+			this.OptionChanged_Handler(this, EventArgs.Empty);
 		}
 
 		private static double AspectRatioOf(DrawingSize size)
@@ -796,6 +838,17 @@ namespace EveFPreview.View
 		{
 			Application.Current.MainWindow = this;
 
+			// Application.Current.Run(this) below is normally what installs the dispatcher's
+			// synchronization context, but FormActivated (which starts the update-check background
+			// task, among other things) runs before that. Without it, a ConfigureAwait(true)
+			// continuation started during activation captures no context and resumes on a thread
+			// pool thread instead of this one, crashing the moment it touches the UI (e.g. an update
+			// found while activating). Install it up front so activation is never in that window.
+			if (SynchronizationContext.Current == null)
+			{
+				SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(this.Dispatcher));
+			}
+
 			this._suppressEvents = true;
 			this.FormActivated?.Invoke();
 			this._suppressEvents = false;
@@ -1193,11 +1246,14 @@ namespace EveFPreview.View
 				return;
 			}
 
+			this.FlushPendingWindowSizeSave();
 			this.FormMinimized?.Invoke();
 		}
 
 		private void MainWindow_Closing(object sender, CancelEventArgs e)
 		{
+			this.FlushPendingWindowSizeSave();
+
 			ViewCloseRequest request = new ViewCloseRequest();
 
 			this.FormCloseRequested?.Invoke(request);
