@@ -131,7 +131,7 @@ namespace EveFPreview.Presenters
 					if (update != null)
 					{
 						bool showPopup = !string.Equals(this._configuration.SkippedUpdateVersion, update.Tag, StringComparison.OrdinalIgnoreCase);
-						this.View.SetUpdateAvailable(update.Tag, update.Url, showPopup);
+						this.View.SetUpdateAvailable(update.Tag, update.Url, update.ReleaseNotes, showPopup);
 					}
 				}
 
@@ -551,11 +551,19 @@ namespace EveFPreview.Presenters
 			// https://brockallen.com/2016/09/24/process-start-for-urls-on-net-core/
 			// https://github.com/dotnet/runtime/issues/17938
 
+			// The shell opens whatever it is handed with the registered handler, so never pass it
+			// anything but a web link (no file:, ms-settings:, custom protocol handlers, ...).
+			if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri)
+				|| (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+			{
+				return;
+			}
+
 			// TODO Move out to a separate service / presenter / message handler
 #if LINUX
-			Process.Start("xdg-open", new Uri(url).AbsoluteUri);
+			Process.Start("xdg-open", uri.AbsoluteUri);
 #else
-			ProcessStartInfo processStartInfo = new ProcessStartInfo(new Uri(url).AbsoluteUri);
+			ProcessStartInfo processStartInfo = new ProcessStartInfo(uri.AbsoluteUri);
 			processStartInfo.UseShellExecute = true;
 			Process.Start(processStartInfo);
 #endif
