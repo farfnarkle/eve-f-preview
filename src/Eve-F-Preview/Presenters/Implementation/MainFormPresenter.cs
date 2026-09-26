@@ -3,12 +3,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
-using System.Windows.Forms;
 using EveFPreview.Configuration;
 using EveFPreview.Mediator.Messages;
 using EveFPreview.Services;
+using EveFPreview.UI.Hotkeys;
 using EveFPreview.View;
 using MediatR;
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
+using MessageBoxResult = System.Windows.MessageBoxResult;
 
 namespace EveFPreview.Presenters
 {
@@ -167,6 +171,8 @@ namespace EveFPreview.Presenters
 
 		private void Close(ViewCloseRequest request)
 		{
+			this._configuration.SettingsWindowSize = this.View.SettingsWindowSize;
+
 			if (this._exitApplication || !this.View.MinimizeToTray)
 			{
 				this._mediator.Send(new StopService()).Wait();
@@ -177,6 +183,7 @@ namespace EveFPreview.Presenters
 			}
 
 			request.Allow = false;
+			this._configurationStorage.Save();
 			this.View.Minimize();
 		}
 
@@ -265,6 +272,10 @@ namespace EveFPreview.Presenters
 
 
 			this.View.IconName = this._configuration.IconName;
+			this.View.UiTheme = this._configuration.UiTheme;
+			this.View.SettingsWindowSize = this._configuration.SettingsWindowSize;
+			this.View.SettingsWindowTopmost = this._configuration.SettingsWindowTopmost;
+			this.View.MaintainThumbnailAspectRatio = this._configuration.MaintainThumbnailAspectRatio;
 			this.View.SetGlobalShortcutSettings(this.CreateGlobalShortcutSettingsFromConfiguration());
 			this.View.SetSettingsSyncConfiguration(this._configuration, () => this._configurationStorage.Save());
 			this.View.SetCycleGroupsConfiguration(this._configuration, () => this._configurationStorage.Save());
@@ -379,12 +390,12 @@ namespace EveFPreview.Presenters
 			bool enableAutoSync = this.View.EnableAutoSettingsSync;
 			if (enableAutoSync && !EveAutoSettingsSyncRunner.HasConfiguredProfile(this._configuration))
 			{
-				System.Windows.Forms.MessageBox.Show(
+				MessageBox.Show(
 					"Enable auto settings sync needs a saved sync profile first.\n\n" +
 					"Open the Settings Sync tab, run a manual Sync once (that saves source, destinations, and channels), then turn this back on.",
 					"Auto settings sync",
-					System.Windows.Forms.MessageBoxButtons.OK,
-					System.Windows.Forms.MessageBoxIcon.Information);
+					MessageBoxButton.OK,
+					MessageBoxImage.Information);
 				enableAutoSync = false;
 				this.View.EnableAutoSettingsSync = false;
 			}
@@ -410,7 +421,6 @@ namespace EveFPreview.Presenters
 			this._configuration.ThumbnailZoomEnabled = this.View.EnableThumbnailZoom;
 			this._configuration.ThumbnailZoomFactor = this.View.ThumbnailZoomFactor;
 			this._configuration.ThumbnailZoomAnchor = ViewZoomAnchorConverter.Convert(this.View.ThumbnailZoomAnchor);
-			this._configuration.OverlayLabelAnchor = ViewZoomAnchorConverter.Convert(this.View.OverlayLabelAnchor);
 
 			if (this._configuration.CycleGroupIndicatorAnchor != ViewZoomAnchorConverter.Convert(this.View.CycleGroupIndicatorAnchor))
 			{
@@ -441,10 +451,24 @@ namespace EveFPreview.Presenters
 				await this._mediator.Publish(new ThumbnailFrameSettingsUpdated());
 			}
 
+			// Thumbnails only re-read the label style when told to, so a change shows straight away.
+			ZoomAnchor labelAnchor = ViewZoomAnchorConverter.Convert(this.View.OverlayLabelAnchor);
+			bool overlayLabelChanged = this._configuration.OverlayLabelAnchor != labelAnchor
+				|| this._configuration.OverlayLabelColor != this.View.OverlayLabelColor
+				|| !Equals(this._configuration.OverlayLabelFont, this.View.OverlayLabelFont);
+			this._configuration.OverlayLabelAnchor = labelAnchor;
 			this._configuration.OverlayLabelColor = this.View.OverlayLabelColor;
 			this._configuration.OverlayLabelFont = this.View.OverlayLabelFont;
+			if (overlayLabelChanged)
+			{
+				await this._mediator.Publish(new ThumbnailOverlayLabelUpdated());
+			}
 
 			this._configuration.IconName = this.View.IconName;
+			this._configuration.UiTheme = this.View.UiTheme;
+			this._configuration.SettingsWindowSize = this.View.SettingsWindowSize;
+			this._configuration.SettingsWindowTopmost = this.View.SettingsWindowTopmost;
+			this._configuration.MaintainThumbnailAspectRatio = this.View.MaintainThumbnailAspectRatio;
 
 			this._configurationStorage.Save();
 
@@ -578,15 +602,12 @@ namespace EveFPreview.Presenters
 
 		private void CloseAllEveClients()
 		{
-			Form owner = this.View as Form;
-			DialogResult confirm = MessageBox.Show(
-				owner,
-				"This will close all eve online windows are you sure?",
-				"Close all EVE clients",
-				MessageBoxButtons.YesNo,
-				MessageBoxIcon.Warning,
-				MessageBoxDefaultButton.Button2);
-			if (confirm != DialogResult.Yes)
+			const string text = "This will close all eve online windows are you sure?";
+			const string caption = "Close all EVE clients";
+			MessageBoxResult confirm = this.View is System.Windows.Window owner && owner.IsVisible
+				? MessageBox.Show(owner, text, caption, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No)
+				: MessageBox.Show(text, caption, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+			if (confirm != MessageBoxResult.Yes)
 			{
 				return;
 			}

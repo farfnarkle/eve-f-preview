@@ -23,7 +23,6 @@
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <UseWindowsForms>true</UseWindowsForms>
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
     <Configurations>Build;Debug;Release</Configurations>
   </PropertyGroup>
@@ -78,18 +77,15 @@
     <UseVSHostingProcess>false</UseVSHostingProcess>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Update="View\Implementation\StaticThumbnailImage.cs">
-      <SubType>Component</SubType>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
     <EmbeddedResource Include="app.manifest" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Data\WormholeStatics.json" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="original-icon.ico" />
+    <Resource Include="original-icon.ico" />
+    <Resource Include="Icons\*.ico" />
+    <Resource Include="Icons\CycleGroupIcon.png" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="LightInject">
@@ -115,10 +111,5 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="AboutBox.cs" />
-    <Compile Remove="AboutBox.Designer.cs" />
-    <EmbeddedResource Remove="AboutBox.resx" />
   </ItemGroup>
 </Project>

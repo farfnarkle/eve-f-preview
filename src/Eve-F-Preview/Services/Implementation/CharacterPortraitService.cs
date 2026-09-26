@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -10,6 +9,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 using EveFPreview.Configuration;
 using EveFPreview.Mediator.Messages;
 using MediatR;
@@ -365,7 +365,7 @@ namespace EveFPreview.Services.Implementation
 			return false;
 		}
 
-		public Image TryLoadPortraitImage(string windowTitle)
+		public BitmapSource TryLoadPortraitImage(string windowTitle)
 		{
 			if (!this.TryGetPortraitPath(windowTitle, out string path) || !File.Exists(path))
 			{
@@ -375,10 +375,17 @@ namespace EveFPreview.Services.Implementation
 			try
 			{
 				using FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-				return Image.FromStream(stream);
+				var image = new BitmapImage();
+				image.BeginInit();
+				image.CacheOption = BitmapCacheOption.OnLoad;
+				image.StreamSource = stream;
+				image.EndInit();
+				image.Freeze();
+				return image;
 			}
-			catch (IOException ex)
+			catch (Exception ex) when (ex is IOException || ex is NotSupportedException || ex is FormatException || ex is ArgumentException || ex is InvalidOperationException)
 			{
+				// NotSupportedException: the file exists but isn't a decodable image (e.g. a partial download).
 				this.Log($"Failed to load portrait for '{windowTitle}': {ex.Message}");
 				return null;
 			}

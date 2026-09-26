@@ -18,7 +18,7 @@ namespace EveFPreview.Services
 		private const int HideDelayMilliseconds = 350;
 
 		private readonly IThumbnailConfiguration _configuration;
-		private CharacterIndicatorForm _form;
+		private CharacterIndicatorWindow _form;
 		private Action<IntPtr> _cellClicked;
 		private Action<IntPtr> _cellShiftClicked;
 		private DateTime? _focusLostAtUtc;
@@ -68,7 +68,6 @@ namespace EveFPreview.Services
 			}
 
 			this._form.Close();
-			this._form.Dispose();
 			this._form = null;
 		}
 
@@ -77,7 +76,7 @@ namespace EveFPreview.Services
 			if (!this._configuration.EnableCharacterIndicator)
 			{
 				this._focusLostAtUtc = null;
-				if (this._form != null && this._form.Visible)
+				if (this._form != null && this._form.IsVisible)
 				{
 					this._form.Hide();
 				}
@@ -91,7 +90,7 @@ namespace EveFPreview.Services
 			}
 			else
 			{
-				bool alreadyVisible = this._form != null && this._form.Visible;
+				bool alreadyVisible = this._form != null && this._form.IsVisible;
 				if (!alreadyVisible)
 				{
 					// Nothing currently shown to bridge over - stay hidden, no need to start a timer.
@@ -113,7 +112,7 @@ namespace EveFPreview.Services
 
 			this.EnsureFormCreated();
 
-			if (!this._form.Visible)
+			if (!this._form.IsVisible)
 			{
 				this._form.Show();
 			}
@@ -130,13 +129,13 @@ namespace EveFPreview.Services
 				return;
 			}
 
-			this._form = new CharacterIndicatorForm();
+			this._form = new CharacterIndicatorWindow();
 			this._form.LocationDragged = location => this._configuration.CharacterIndicatorLocation = location;
 			this._form.CellClicked = this._cellClicked;
 			this._form.CellShiftClicked = this._cellShiftClicked;
 
 			Point savedLocation = this._configuration.CharacterIndicatorLocation;
-			this._form.Location = savedLocation != Point.Empty ? savedLocation : new Point(40, 40);
+			this._form.SetLocation(savedLocation != Point.Empty ? savedLocation : new Point(40, 40));
 		}
 	}
 }

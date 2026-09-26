@@ -1,10 +1,10 @@
 using System;
-using System.Windows.Forms;
 using System.ComponentModel;
+using System.Windows.Interop;
 
 namespace EveFPreview.UI.Hotkeys
 {
-	class HotkeyHandler : IMessageFilter, IDisposable
+	class HotkeyHandler : IDisposable
 	{
 		private static int _currentId;
 		private const int MAX_ID = 0xBFFF;
@@ -96,7 +96,10 @@ namespace EveFPreview.UI.Hotkeys
 				return false;
 			}
 
-			Application.AddMessageFilter(this);
+			// WM_HOTKEY is posted to this thread's queue (directly, or via the target window), so the
+			// dispatcher's message loop sees it before it is dispatched - the same point a WinForms
+			// IMessageFilter used to see it.
+			ComponentDispatcher.ThreadFilterMessage += this.ThreadFilterMessage;
 
 			this.IsRegistered = true;
 
@@ -120,21 +123,24 @@ namespace EveFPreview.UI.Hotkeys
 				return;
 			}
 
-			Application.RemoveMessageFilter(this);
+			ComponentDispatcher.ThreadFilterMessage -= this.ThreadFilterMessage;
 
 			// Clean up after ourselves
 			HotkeyHandlerNativeMethods.UnregisterHotKey(this._hotkeyTarget, this._hotkeyId);
 		}
 
-		#region IMessageFilter
-		public bool PreFilterMessage(ref Message message)
+		private void ThreadFilterMessage(ref MSG message, ref bool handled)
 		{
-			return this.IsRegistered
-					&& (message.Msg == HotkeyHandlerNativeMethods.WM_HOTKEY)
-					&& (message.WParam.ToInt32() == this._hotkeyId)
+			if (handled)
+			{
+				return;
+			}
+
+			handled = this.IsRegistered
+					&& (message.message == (int)HotkeyHandlerNativeMethods.WM_HOTKEY)
+					&& (message.wParam.ToInt32() == this._hotkeyId)
 					&& this.OnPressed();
 		}
-		#endregion
 
 		internal bool RaisePressed()
 		{

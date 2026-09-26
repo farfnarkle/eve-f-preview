@@ -73,13 +73,13 @@
   </dependency>
   -->
 	
-  <!--
+  <!-- Per-monitor (v2) DPI aware, as the WinForms build was (it set this at startup). Thumbnail positions
+       and sizes are physical pixels, so the process must not be DPI-virtualized by Windows. -->
   <asmv3:application>
-    <asmv3:windowsSettings xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">
-      <dpiAware>True</dpiAware>
-      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitor</dpiAwareness>
+    <asmv3:windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2, PerMonitor</dpiAwareness>
     </asmv3:windowsSettings>
   </asmv3:application>
-  -->
 
 </assembly>

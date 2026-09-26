@@ -1,0 +1,47 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	<!-- Light palette. Same keys as Colors.Dark.xaml. -->
+	<SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F4F5F7" />
+	<SolidColorBrush x:Key="NavBackgroundBrush" Color="#ECEDF0" />
+	<SolidColorBrush x:Key="NavItemHoverBrush" Color="#E2E4E8" />
+	<SolidColorBrush x:Key="NavItemSelectedBrush" Color="#FFFFFF" />
+
+	<SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF" />
+	<SolidColorBrush x:Key="CardBorderBrush" Color="#E3E5EA" />
+	<SolidColorBrush x:Key="DividerBrush" Color="#ECEEF1" />
+
+	<SolidColorBrush x:Key="TextPrimaryBrush" Color="#1A1B1E" />
+	<SolidColorBrush x:Key="TextSecondaryBrush" Color="#5E626B" />
+	<SolidColorBrush x:Key="TextDisabledBrush" Color="#A3A7AF" />
+
+	<SolidColorBrush x:Key="AccentBrush" Color="#2563EB" />
+	<SolidColorBrush x:Key="AccentHoverBrush" Color="#3B74F0" />
+	<SolidColorBrush x:Key="AccentPressedBrush" Color="#1D4FC4" />
+	<SolidColorBrush x:Key="AccentTextBrush" Color="#FFFFFF" />
+	<SolidColorBrush x:Key="AccentForegroundBrush" Color="#1D57D8" />
+	<SolidColorBrush x:Key="AccentSubtleBrush" Color="#E8EFFD" />
+
+	<SolidColorBrush x:Key="ControlFillBrush" Color="#FFFFFF" />
+	<SolidColorBrush x:Key="ControlHoverBrush" Color="#F3F4F6" />
+	<SolidColorBrush x:Key="ControlPressedBrush" Color="#E9EBEF" />
+	<SolidColorBrush x:Key="ControlBorderBrush" Color="#D2D5DB" />
+	<SolidColorBrush x:Key="ControlBorderHoverBrush" Color="#B8BCC4" />
+	<SolidColorBrush x:Key="InputFillBrush" Color="#FFFFFF" />
+
+	<SolidColorBrush x:Key="SelectionFillBrush" Color="#E2EBFD" />
+	<SolidColorBrush x:Key="SelectionHoverBrush" Color="#F1F3F6" />
+
+	<SolidColorBrush x:Key="PopupBackgroundBrush" Color="#FFFFFF" />
+	<SolidColorBrush x:Key="PopupBorderBrush" Color="#D9DCE2" />
+
+	<SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#C3C7CE" />
+	<SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#A6ABB4" />
+
+	<SolidColorBrush x:Key="DangerBrush" Color="#C4312B" />
+	<SolidColorBrush x:Key="DangerHoverBrush" Color="#FBE9E8" />
+	<SolidColorBrush x:Key="SuccessTextBrush" Color="#1B7F45" />
+	<SolidColorBrush x:Key="WarningTextBrush" Color="#A85D06" />
+
+	<SolidColorBrush x:Key="PreviewSurfaceBrush" Color="#16171A" />
+	<Color x:Key="ShadowColor">#5A6070</Color>
+</ResourceDictionary>

@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Forms;
+using EveFPreview.UI.Hotkeys;
 
 namespace EveFPreview.Configuration
 {
 	public static class HotkeyFormatting
 	{
-		private static readonly KeysConverter KeysConverter = new KeysConverter();
-
 		public static string ToDisplayString(Keys keys)
 		{
 			if (keys == Keys.None)
@@ -23,7 +21,7 @@ namespace EveFPreview.Configuration
 				return FormatWithModifiers(keys & Keys.Modifiers, mouseName);
 			}
 
-			return KeysConverter.ConvertToInvariantString(keys) ?? string.Empty;
+			return KeysText.ToText(keys);
 		}
 
 		public static Keys FromDisplayString(string hotkey)
@@ -34,16 +32,9 @@ namespace EveFPreview.Configuration
 			}
 
 			string trimmed = NormalizeMouseButtonAliases(hotkey.Trim());
-			try
+			if (KeysText.TryParse(trimmed, out Keys keys))
 			{
-				object rawValue = KeysConverter.ConvertFromInvariantString(trimmed);
-				if (rawValue is Keys keys)
-				{
-					return keys;
-				}
-			}
-			catch (Exception)
-			{
+				return keys;
 			}
 
 			return ParseModifierAndKey(trimmed);

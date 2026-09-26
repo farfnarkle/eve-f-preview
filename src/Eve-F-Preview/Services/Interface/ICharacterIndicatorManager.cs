@@ -36,15 +36,13 @@ namespace EveFPreview.Services
 		public readonly IntPtr Handle;
 		public readonly string Title;
 		public readonly bool IsActive;
-		public readonly bool IsDisabled;
 		public readonly bool IsExcludedFromCycleGroup;
 
-		public CharacterIndicatorCell(IntPtr handle, string title, bool isActive, bool isDisabled, bool isExcludedFromCycleGroup)
+		public CharacterIndicatorCell(IntPtr handle, string title, bool isActive, bool isExcludedFromCycleGroup)
 		{
 			this.Handle = handle;
 			this.Title = title;
 			this.IsActive = isActive;
-			this.IsDisabled = isDisabled;
 			this.IsExcludedFromCycleGroup = isExcludedFromCycleGroup;
 		}
 	}

@@ -1,71 +1,70 @@
-using System;
-using System.Drawing;
-using System.Windows.Forms;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using EveFPreview.Configuration;
 using EveFPreview.Services;
 
 namespace EveFPreview.View
 {
+	/// <summary>
+	/// Wine compatibility mode: no DWM, so the thumbnail is a periodically captured still image
+	/// stretched over the window instead of a live preview.
+	/// </summary>
 	sealed class StaticThumbnailView : ThumbnailView
 	{
 		#region Private fields
-		private readonly PictureBox _thumbnail;
+		private readonly Image _thumbnail;
 		#endregion
 
 		public StaticThumbnailView(IWindowManager windowManager, IThumbnailConfiguration config, IThumbnailManager thumbnailManager, ICharacterPortraitService characterPortraitService)
 			: base(windowManager, config, thumbnailManager, characterPortraitService)
 		{
-			this._thumbnail = new StaticThumbnailImage
+			this._thumbnail = new Image
 			{
-				TabStop = false,
-				SizeMode = PictureBoxSizeMode.StretchImage,
-				Location = new Point(0, 0),
-				Size = new Size(this.ClientSize.Width, this.ClientSize.Height)
+				Stretch = Stretch.Fill,
+				// Mouse input belongs to the window underneath (drag, click-to-activate, ...).
+				IsHitTestVisible = false
 			};
-			this.Controls.Add(this._thumbnail);
+			RenderOptions.SetBitmapScalingMode(this._thumbnail, BitmapScalingMode.HighQuality);
+			this.Content = new Grid { Children = { this._thumbnail } };
 		}
 
 		protected override void RefreshThumbnail(bool forceRefresh)
 		{
-			if (!forceRefresh || this.IsPreventPreviews())
+			// The base constructor refreshes before this constructor has created the image.
+			if (!forceRefresh || this.IsPreventPreviews() || this._thumbnail == null)
 			{
 				return;
 			}
 
-			var thumbnail = this.WindowManager.GetStaticThumbnail(this.Id);
+			BitmapSource thumbnail = this.WindowManager.GetStaticThumbnail(this.Id);
 			if (thumbnail != null)
 			{
-				var oldImage = this._thumbnail.Image;
-				this._thumbnail.Image = thumbnail;
-				oldImage?.Dispose();
+				this._thumbnail.Source = thumbnail;
 			}
 		}
 
 		protected override void ResizeThumbnail(int baseWidth, int baseHeight, int highlightWidthTop, int highlightWidthRight, int highlightWidthBottom, int highlightWidthLeft)
 		{
-			var left = 0 + highlightWidthLeft;
-			var top = 0 + highlightWidthTop;
-			if (this.IsLocationUpdateRequired(this._thumbnail.Location, left, top))
+			if (this._thumbnail == null)
 			{
-				this._thumbnail.Location = new Point(left, top);
+				return;
 			}
 
-			var width = baseWidth - highlightWidthLeft - highlightWidthRight;
-			var height = baseHeight - highlightWidthTop - highlightWidthBottom;
-			if (this.IsSizeUpdateRequired(this._thumbnail.Size, width, height))
+			// The highlight insets are in pixels; the image is laid out in WPF units.
+			Matrix fromDevice = (PresentationSource.FromVisual(this) as HwndSource)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+			var margin = new Thickness(
+				highlightWidthLeft * fromDevice.M11,
+				highlightWidthTop * fromDevice.M22,
+				highlightWidthRight * fromDevice.M11,
+				highlightWidthBottom * fromDevice.M22);
+
+			if (this._thumbnail.Margin != margin)
 			{
-				this._thumbnail.Size = new Size(width, height);
+				this._thumbnail.Margin = margin;
 			}
-		}
-
-		private bool IsLocationUpdateRequired(Point currentLocation, int left, int top)
-		{
-			return (currentLocation.X != left) || (currentLocation.Y != top);
-		}
-
-		private bool IsSizeUpdateRequired(Size currentSize, int width, int height)
-		{
-			return (currentSize.Width != width) || (currentSize.Height != height);
 		}
 	}
 }

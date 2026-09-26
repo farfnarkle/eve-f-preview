@@ -1,0 +1,545 @@
+<Window x:Class="EveFPreview.View.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:EveFPreview.View"
+        xmlns:controls="clr-namespace:EveFPreview.View.Controls"
+        Title="EVE-F-Preview"
+        Icon="pack://application:,,,/EVE-F-Preview;component/original-icon.ico"
+        Width="940" Height="740" MinWidth="780" MinHeight="540"
+        ResizeMode="CanResize"
+        Topmost="True"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        FontFamily="Segoe UI"
+        FontSize="13"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        local:ThemeManager.UseThemedTitleBar="True"
+        Closing="MainWindow_Closing"
+        SizeChanged="MainWindow_SizeChanged"
+        StateChanged="MainWindow_StateChanged"
+        Loaded="MainWindow_Loaded">
+	<Window.Resources>
+		<Style x:Key="PageScroller" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
+			<Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+			<Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+			<Setter Property="Visibility" Value="Collapsed" />
+		</Style>
+		<Style x:Key="PageContent" TargetType="StackPanel">
+			<Setter Property="Margin" Value="36,30,30,36" />
+			<Setter Property="MaxWidth" Value="820" />
+		</Style>
+		<Style x:Key="NavLabel" TargetType="TextBlock">
+			<Setter Property="FontSize" Value="13.5" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+		</Style>
+		<Style x:Key="NavIcon" TargetType="TextBlock" BasedOn="{StaticResource Icon}">
+			<Setter Property="Width" Value="30" />
+		</Style>
+		<Style x:Key="Times" TargetType="TextBlock">
+			<Setter Property="Text" Value="×" />
+			<Setter Property="Margin" Value="8,0" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+			<Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+		</Style>
+
+		<DataTemplate x:Key="AnimationStyleTemplate">
+			<TextBlock x:Name="Text" Text="Windows default" />
+			<DataTemplate.Triggers>
+				<DataTrigger Binding="{Binding}" Value="{x:Static local:ViewAnimationStyle.NoAnimation}">
+					<Setter TargetName="Text" Property="Text" Value="None (instant)" />
+				</DataTrigger>
+			</DataTemplate.Triggers>
+		</DataTemplate>
+	</Window.Resources>
+
+	<Grid>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="236" />
+			<ColumnDefinition Width="*" />
+		</Grid.ColumnDefinitions>
+
+		<!-- ===================== Navigation ===================== -->
+		<Border Background="{DynamicResource NavBackgroundBrush}">
+			<DockPanel>
+				<StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="22,24,16,20">
+					<Image Source="pack://application:,,,/EVE-F-Preview;component/original-icon.ico" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
+					<StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+						<TextBlock Text="EVE-F-Preview" FontSize="15" FontWeight="SemiBold" />
+						<TextBlock x:Name="NavVersionText" Style="{StaticResource Caption}" />
+					</StackPanel>
+				</StackPanel>
+
+				<Border DockPanel.Dock="Bottom" Margin="8,8,8,16" Padding="14,10" CornerRadius="6" Background="{DynamicResource NavItemHoverBrush}">
+					<DockPanel>
+						<CheckBox x:Name="DarkModeToggle" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}"
+						          Checked="DarkModeToggle_Changed" Unchecked="DarkModeToggle_Changed" ToolTip="Switch between the dark and light theme" />
+						<TextBlock x:Name="ThemeIcon" Style="{StaticResource NavIcon}" Text="&#xE708;" />
+						<TextBlock Text="Dark mode" Style="{StaticResource NavLabel}" />
+					</DockPanel>
+				</Border>
+
+				<ListBox x:Name="NavList" Style="{StaticResource NavList}" SelectionChanged="NavList_SelectionChanged">
+					<ListBoxItem Tag="GeneralPage">
+						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE713;" /><TextBlock Style="{StaticResource NavLabel}" Text="General" /></StackPanel>
+					</ListBoxItem>
+					<ListBoxItem Tag="ThumbnailsPage">
+						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE80A;" /><TextBlock Style="{StaticResource NavLabel}" Text="Thumbnails" /></StackPanel>
+					</ListBoxItem>
+					<ListBoxItem Tag="OverlayPage">
+						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE81E;" /><TextBlock Style="{StaticResource NavLabel}" Text="Overlay" /></StackPanel>
+					</ListBoxItem>
+					<ListBoxItem Tag="ZoomPage">
+						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE71E;" /><TextBlock Style="{StaticResource NavLabel}" Text="Zoom &amp; overwatch" /></StackPanel>
+					</ListBoxItem>
+					<ListBoxItem Tag="HotkeysPage">
+						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE765;" /><TextBlock Style="{StaticResource NavLabel}" Text="Hotkeys" /></StackPanel>
+					</ListBoxItem>
+					<ListBoxItem Tag="CycleGroupsPage">
+						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE8AB;" /><TextBlock Style="{StaticResource NavLabel}" Text="Cycle groups" /></StackPanel>
+					</ListBoxItem>
+					<ListBoxItem Tag="ClientsPage">
+						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE7F4;" /><TextBlock Style="{StaticResource NavLabel}" Text="Clients" /></StackPanel>
+					</ListBoxItem>
+					<ListBoxItem Tag="SyncPage">
+						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE895;" /><TextBlock Style="{StaticResource NavLabel}" Text="Settings sync" /></StackPanel>
+					</ListBoxItem>
+					<ListBoxItem Tag="AboutPage">
+						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE946;" /><TextBlock Style="{StaticResource NavLabel}" Text="About" /></StackPanel>
+					</ListBoxItem>
+				</ListBox>
+			</DockPanel>
+		</Border>
+
+		<!-- ===================== Pages ===================== -->
+		<Grid Grid.Column="1" x:Name="PagesHost">
+
+			<!-- General -->
+			<ScrollViewer x:Name="GeneralPage" Style="{StaticResource PageScroller}">
+				<StackPanel Style="{StaticResource PageContent}">
+					<TextBlock Style="{StaticResource PageTitle}" Text="General" />
+					<TextBlock Style="{StaticResource PageSubtitle}" Text="Startup behaviour, updates and configuration profiles." />
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Startup" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Minimize to system tray" Description="Minimizing or closing this window keeps EVE-F-Preview running in the notification area.">
+								<CheckBox x:Name="MinimizeToTrayCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Start minimized" Description="Start in the background instead of opening this window.">
+								<CheckBox x:Name="StartMinimizedCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Check for updates" Description="{x:Static local:SettingsHelpText.CheckForUpdates}">
+								<CheckBox x:Name="CheckForUpdatesCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Settings window" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Keep this window on top" Description="Show the settings window above other windows, including EVE. Its size is remembered either way.">
+								<CheckBox x:Name="SettingsWindowTopmostCheckBox" Style="{StaticResource ToggleSwitch}"
+								          Checked="SettingsWindowTopmostCheckBox_Changed" Unchecked="SettingsWindowTopmostCheckBox_Changed" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Configuration profile" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Active profile" Description="The settings file EVE-F-Preview is using right now.">
+								<ComboBox x:Name="ConfigProfileCombo" Width="260" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Manage profiles" Description="Load the profile selected above, save the current settings under a new name, or import an EVE-O / EVE-X configuration.">
+								<StackPanel Orientation="Horizontal">
+									<Button x:Name="LoadConfigProfileButton" Content="Load" Style="{StaticResource AccentButton}" Margin="0,0,8,0" Click="LoadConfigProfileButton_Click" />
+									<Button x:Name="SaveConfigProfileAsButton" Content="Save as…" Style="{StaticResource ActionButton}" Margin="0,0,8,0" Click="SaveConfigProfileAsButton_Click" />
+									<Button x:Name="ImportConfigProfileButton" Content="Import…" Style="{StaticResource ActionButton}" Click="ImportConfigProfileButton_Click" />
+								</StackPanel>
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+				</StackPanel>
+			</ScrollViewer>
+
+			<!-- Thumbnails -->
+			<ScrollViewer x:Name="ThumbnailsPage" Style="{StaticResource PageScroller}">
+				<StackPanel Style="{StaticResource PageContent}">
+					<TextBlock Style="{StaticResource PageTitle}" Text="Thumbnails" />
+					<TextBlock Style="{StaticResource PageSubtitle}" Text="Size, visibility and placement of the live client previews." />
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Size &amp; appearance" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Thumbnail size" Description="Width × height in pixels.">
+								<StackPanel Orientation="Horizontal">
+									<controls:NumericUpDown x:Name="ThumbnailsWidthNumericEdit" Minimum="0" Maximum="999999" Increment="10" ValueChanged="ThumbnailSizeChanged_Handler" />
+									<TextBlock Style="{StaticResource Times}" />
+									<controls:NumericUpDown x:Name="ThumbnailsHeightNumericEdit" Minimum="0" Maximum="99999999" Increment="10" ValueChanged="ThumbnailSizeChanged_Handler" />
+								</StackPanel>
+							</controls:SettingRow>
+							<controls:SettingRow Title="Maintain aspect ratio" IsSubSetting="True"
+							                     Description="Changing the width also changes the height, and the other way round. Also applies when dragging a thumbnail's frame.">
+								<CheckBox x:Name="MaintainAspectRatioCheckBox" Style="{StaticResource ToggleSwitch}" Checked="MaintainAspectRatioCheckBox_Changed" Unchecked="MaintainAspectRatioCheckBox_Changed" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Opacity" Description="How solid thumbnails are while the mouse isn't over them.">
+								<StackPanel Orientation="Horizontal">
+									<Slider x:Name="ThumbnailOpacitySlider" Width="190" Minimum="20" Maximum="100" SmallChange="1" LargeChange="10"
+									        VerticalAlignment="Center" ValueChanged="ThumbnailOpacitySlider_ValueChanged" />
+									<TextBlock x:Name="OpacityValueText" Width="44" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+								</StackPanel>
+							</controls:SettingRow>
+							<controls:SettingRow Title="Show frames" Description="Draw a window frame around each thumbnail, so it can be resized by its edges.">
+								<CheckBox x:Name="ShowThumbnailFramesCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Always on top" Description="Keep thumbnails above other windows, including EVE itself.">
+								<CheckBox x:Name="ShowThumbnailsAlwaysOnTopCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Visibility" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Hide the active client's thumbnail" Description="Only show previews of the clients you aren't playing right now.">
+								<CheckBox x:Name="HideActiveClientThumbnailCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Hide while EVE isn't focused" Description="Hide every thumbnail while another application is in front.">
+								<CheckBox x:Name="HideThumbnailsOnLostFocusCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Show portraits instead of live previews" Description="{x:Static local:SettingsHelpText.DoNotDisplayPreviews}">
+								<CheckBox x:Name="PreventPreviewsCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="PreventPreviewColorRow" Title="Portrait background" Description="Colour shown behind the character portrait." IsSubSetting="True">
+								<Button x:Name="PreventPreviewColorButton" Style="{StaticResource ColorSwatchButton}" Click="PreventPreviewColorButton_Click" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Character portraits" Description="Download fresh portraits for every character in your settings.">
+								<Button x:Name="RefreshPortraitsButton" Content="Refresh" Style="{StaticResource ActionButton}" Click="RefreshPortraitsButton_Click" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Layout" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Lock positions" Description="{x:Static local:SettingsHelpText.LockThumbnailLocation}">
+								<CheckBox x:Name="LockThumbnailLocationCheckbox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Snap to edges" Description="{x:Static local:SettingsHelpText.SnapToEdges}">
+								<CheckBox x:Name="ThumbnailSnapToEdgesCheckBox" Style="{StaticResource ToggleSwitch}" Checked="ThumbnailSnapToEdgesCheckBox_CheckedChanged" Unchecked="ThumbnailSnapToEdgesCheckBox_CheckedChanged" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="SnapToGridRow" Title="Snap to grid" Description="Snap thumbnails to a grid while dragging. Off while snapping to edges.">
+								<CheckBox x:Name="ThumbnailSnapToGridCheckBox" Style="{StaticResource ToggleSwitch}" Checked="ThumbnailSnapToGridCheckBox_CheckedChanged" Unchecked="ThumbnailSnapToGridCheckBox_CheckedChanged" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="SnapGridSizeRow" Title="Grid size" Description="Horizontal × vertical spacing in pixels." IsSubSetting="True">
+								<StackPanel Orientation="Horizontal">
+									<controls:NumericUpDown x:Name="ThumbnailSnapToGridSizeXNumericEdit" Minimum="0" Maximum="999999" Increment="10" ValueChanged="OptionChanged_Handler" />
+									<TextBlock Style="{StaticResource Times}" />
+									<controls:NumericUpDown x:Name="ThumbnailSnapToGridSizeYNumericEdit" Minimum="0" Maximum="999999" Increment="10" ValueChanged="OptionChanged_Handler" />
+								</StackPanel>
+							</controls:SettingRow>
+							<controls:SettingRow Title="Remember positions per account" Description="{x:Static local:SettingsHelpText.AccountBasedPositioning}">
+								<CheckBox x:Name="EnableAccountBasedThumbnailPositioningCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Separate layout for each client" Description="{x:Static local:SettingsHelpText.UniqueLayout}">
+								<CheckBox x:Name="EnablePerClientThumbnailsLayoutsCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Character indicator" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Show character indicator" Description="{x:Static local:SettingsHelpText.CharacterIndicator}">
+								<CheckBox x:Name="EnableCharacterIndicatorCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="IndicatorLockRow" Title="Lock indicator position" Description="{x:Static local:SettingsHelpText.LockCharacterIndicator}" IsSubSetting="True">
+								<CheckBox x:Name="LockCharacterIndicatorLocationCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="IndicatorClickRow" Title="Click a square to switch clients" Description="{x:Static local:SettingsHelpText.ClickToActivateCharacterIndicator}" IsSubSetting="True">
+								<CheckBox x:Name="EnableCharacterIndicatorClickToActivateCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+				</StackPanel>
+			</ScrollViewer>
+
+			<!-- Overlay -->
+			<ScrollViewer x:Name="OverlayPage" Style="{StaticResource PageScroller}">
+				<StackPanel Style="{StaticResource PageContent}">
+					<TextBlock Style="{StaticResource PageTitle}" Text="Overlay" />
+					<TextBlock Style="{StaticResource PageSubtitle}" Text="What's drawn on top of each thumbnail." />
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Character label" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Show character name" Description="{x:Static local:SettingsHelpText.ShowOverlay}">
+								<CheckBox x:Name="ShowThumbnailOverlaysCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Show current system" Description="{x:Static local:SettingsHelpText.ShowSystemName}">
+								<CheckBox x:Name="ShowSystemNameOnThumbnailCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="LabelFontRow" Title="Font">
+								<StackPanel Orientation="Horizontal">
+									<Border Background="{DynamicResource PreviewSurfaceBrush}" CornerRadius="6" Height="34" MinWidth="130" Padding="12,0" Margin="0,0,10,0">
+										<Viewbox StretchDirection="DownOnly" MaxHeight="26" MaxWidth="170" VerticalAlignment="Center">
+											<TextBlock x:Name="OverlayLabelFontPreview" Text="Character" />
+										</Viewbox>
+									</Border>
+									<Button x:Name="LabelFontButton" Content="Change…" Style="{StaticResource ActionButton}" Click="LabelFontButton_Click" />
+								</StackPanel>
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="LabelColorRow" Title="Colour">
+								<Button x:Name="OverlayLabelColorButton" Style="{StaticResource ColorSwatchButton}" Click="OverlayLabelColorButton_Click" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="LabelPositionRow" Title="Position" Description="Where the name sits on the thumbnail.">
+								<controls:AnchorSelector x:Name="OverlayLabelAnchorSelector" AnchorChanged="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Active client" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Highlight the active client" Description="Draw a coloured border around the thumbnail of the client you're playing.">
+								<CheckBox x:Name="EnableActiveClientHighlightCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="HighlightColorRow" Title="Highlight colour" IsSubSetting="True">
+								<Button x:Name="ActiveClientHighlightColorButton" Style="{StaticResource ColorSwatchButton}" Click="ActiveClientHighlightColorButton_Click" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Cycle group badge" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Badge position" Description="Shown on clients excluded from cycling (Shift+click a thumbnail to toggle). Sits on the name when there is one.">
+								<controls:AnchorSelector x:Name="CycleGroupIndicatorAnchorSelector" AnchorChanged="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+				</StackPanel>
+			</ScrollViewer>
+
+			<!-- Zoom & overwatch -->
+			<ScrollViewer x:Name="ZoomPage" Style="{StaticResource PageScroller}">
+				<StackPanel Style="{StaticResource PageContent}">
+					<TextBlock Style="{StaticResource PageTitle}" Text="Zoom &amp; overwatch" />
+					<TextBlock Style="{StaticResource PageSubtitle}" Text="Enlarge thumbnails on hover, or pin one big preview of a client." />
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Zoom on hover" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Zoom on hover" Description="Enlarge a thumbnail while the mouse is over it.">
+								<CheckBox x:Name="EnableThumbnailZoomCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="ZoomFactorRow" Title="Zoom factor" Description="How many times larger the hovered thumbnail gets." IsSubSetting="True">
+								<controls:NumericUpDown x:Name="ThumbnailZoomFactorNumericEdit" Minimum="2" Maximum="10" ValueChanged="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="ZoomAnchorRow" Title="Grow from" Description="The corner or edge that stays put while the thumbnail grows." IsSubSetting="True">
+								<controls:AnchorSelector x:Name="ZoomAnchorSelector" AnchorChanged="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Overwatch" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Overwatch mode" Description="{x:Static local:SettingsHelpText.OverwatchMode}">
+								<CheckBox x:Name="EnableOverwatchModeCheckBox" Style="{StaticResource ToggleSwitch}" Checked="EnableOverwatchModeCheckBox_CheckedChanged" Unchecked="EnableOverwatchModeCheckBox_CheckedChanged" />
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="OverwatchSizeRow" Title="Size" Description="Width × height of the pinned preview, in pixels." IsSubSetting="True">
+								<StackPanel Orientation="Horizontal">
+									<controls:NumericUpDown x:Name="FocusedThumbnailWidthNumericEdit" Minimum="0" Maximum="999999" Increment="10" ValueChanged="OptionChanged_Handler" />
+									<TextBlock Style="{StaticResource Times}" />
+									<controls:NumericUpDown x:Name="FocusedThumbnailHeightNumericEdit" Minimum="0" Maximum="99999999" Increment="10" ValueChanged="OptionChanged_Handler" />
+								</StackPanel>
+							</controls:SettingRow>
+							<controls:SettingRow x:Name="OverwatchPositionRow" Title="Position" Description="Top-left corner (X, Y) in screen pixels." IsSubSetting="True">
+								<StackPanel Orientation="Horizontal">
+									<controls:NumericUpDown x:Name="FocusedThumbnailLocationXNumericEdit" Minimum="-50000" Maximum="50000" ValueChanged="OptionChanged_Handler" />
+									<TextBlock Style="{StaticResource Times}" Text="," />
+									<controls:NumericUpDown x:Name="FocusedThumbnailLocationYNumericEdit" Minimum="-50000" Maximum="50000" ValueChanged="OptionChanged_Handler" />
+								</StackPanel>
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+				</StackPanel>
+			</ScrollViewer>
+
+			<!-- Hotkeys -->
+			<ScrollViewer x:Name="HotkeysPage" Style="{StaticResource PageScroller}">
+				<StackPanel Style="{StaticResource PageContent}">
+					<TextBlock Style="{StaticResource PageTitle}" Text="Hotkeys" />
+					<TextBlock Style="{StaticResource PageSubtitle}" Text="Cycle through clients from the keyboard or mouse." />
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Cycling" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Dynamic cycle group" Description="{x:Static local:SettingsHelpText.DynamicCycleGroup}">
+								<CheckBox x:Name="DynamicCycleGroupCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Only while EVE is focused" Description="{x:Static local:SettingsHelpText.CycleHotkeysWhenEveActive}">
+								<CheckBox x:Name="OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Ignore mouse-button double clicks" Description="{x:Static local:SettingsHelpText.CycleMouseDoubleClickProtection}">
+								<CheckBox x:Name="EnableCycleMouseDoubleClickProtectionCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<local:ShortcutsSettingsControl x:Name="ShortcutsSettingsControl" />
+				</StackPanel>
+			</ScrollViewer>
+
+			<!-- Cycle groups (the grid scrolls itself, so the page doesn't) -->
+			<DockPanel x:Name="CycleGroupsPage" Visibility="Collapsed" Margin="36,30,30,24" MaxWidth="820">
+				<StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+					<TextBlock Style="{StaticResource PageTitle}" Text="Cycle groups" />
+					<TextBlock Style="{StaticResource PageSubtitle}" Text="Which clients each numbered cycle hotkey steps through, and in what order." />
+				</StackPanel>
+				<local:CycleGroupsSettingsControl x:Name="CycleGroupsSettingsControl" />
+			</DockPanel>
+
+			<!-- Clients -->
+			<ScrollViewer x:Name="ClientsPage" Style="{StaticResource PageScroller}">
+				<StackPanel Style="{StaticResource PageContent}">
+					<TextBlock Style="{StaticResource PageTitle}" Text="Clients" />
+					<TextBlock Style="{StaticResource PageSubtitle}" Text="Running EVE clients and how their windows behave." />
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Running clients" />
+					<Border Style="{StaticResource Card}">
+						<StackPanel>
+							<TextBlock x:Name="NoClientsText" Style="{StaticResource Caption}" Margin="18,16" Text="No EVE clients are running." />
+							<ItemsControl x:Name="ThumbnailsList" Focusable="False">
+								<ItemsControl.ItemTemplate>
+									<DataTemplate>
+										<Border x:Name="Row" Padding="18,10,16,10" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0">
+											<DockPanel>
+												<CheckBox DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" ToolTip="Show this client's thumbnail"
+												          IsChecked="{Binding IsChecked, Converter={StaticResource InverseBoolean}}" />
+												<TextBlock Style="{StaticResource Icon}" Text="&#xE7F4;" Margin="0,0,12,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+												<TextBlock Text="{Binding Text}" VerticalAlignment="Center" FontSize="14" />
+											</DockPanel>
+										</Border>
+										<DataTemplate.Triggers>
+											<!-- Dividers go between rows only. -->
+											<DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
+												<Setter TargetName="Row" Property="BorderThickness" Value="0" />
+											</DataTrigger>
+										</DataTemplate.Triggers>
+									</DataTemplate>
+								</ItemsControl.ItemTemplate>
+							</ItemsControl>
+						</StackPanel>
+					</Border>
+					<TextBlock Style="{StaticResource Caption}" Margin="2,8,0,0" Text="Switch a client off to hide its thumbnail. The setting is remembered per character." />
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Client windows" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Track client locations" Description="{x:Static local:SettingsHelpText.TrackClientLocations}">
+								<CheckBox x:Name="EnableClientLayoutTrackingCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Hide the title bar" Description="{x:Static local:SettingsHelpText.HideCaptionBar}">
+								<CheckBox x:Name="HideCaptionOnClientsCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Minimize inactive clients" Description="Minimize the client you switch away from.">
+								<CheckBox x:Name="MinimizeInactiveClientsCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+							<controls:SettingRow Title="Minimize / restore animation" Description="Whether EVE windows animate when they're minimized and restored.">
+								<ComboBox x:Name="AnimationStyleCombo" Width="200" ItemTemplate="{StaticResource AnimationStyleTemplate}" SelectionChanged="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Close clients" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Close all EVE clients" Description="Force-closes every running EVE client. You'll be asked to confirm.">
+								<Button x:Name="CloseAllEveClientsButton" Content="Close all" Style="{StaticResource DangerButton}" Click="CloseAllEveClients_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+				</StackPanel>
+			</ScrollViewer>
+
+			<!-- Settings sync -->
+			<ScrollViewer x:Name="SyncPage" Style="{StaticResource PageScroller}">
+				<StackPanel Style="{StaticResource PageContent}">
+					<TextBlock Style="{StaticResource PageTitle}" Text="Settings sync" />
+					<TextBlock Style="{StaticResource PageSubtitle}" Text="Copy EVE window layouts and chat settings from one character to your others. EVE must be closed while syncing." />
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Automatic sync" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Sync when EVE-F-Preview starts" Description="{x:Static local:SettingsHelpText.AutoSettingsSync}">
+								<CheckBox x:Name="EnableAutoSettingsSyncCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+					<TextBlock x:Name="AutoSettingsSyncStatusLabel" Style="{StaticResource Caption}" Margin="2,8,0,0" Visibility="Collapsed" />
+
+					<local:SettingsSyncControl x:Name="SettingsSyncControl" />
+				</StackPanel>
+			</ScrollViewer>
+
+			<!-- About -->
+			<ScrollViewer x:Name="AboutPage" Style="{StaticResource PageScroller}">
+				<StackPanel Style="{StaticResource PageContent}">
+					<StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+						<Image Source="pack://application:,,,/EVE-F-Preview;component/original-icon.ico" Width="56" Height="56" RenderOptions.BitmapScalingMode="HighQuality" />
+						<StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
+							<TextBlock Style="{StaticResource PageTitle}" Text="EVE-F-Preview" />
+							<TextBlock x:Name="VersionLabel" Style="{StaticResource PageSubtitle}" Margin="0" Text="1.0.1" />
+						</StackPanel>
+					</StackPanel>
+
+					<Border x:Name="UpdateBanner" Visibility="Collapsed" CornerRadius="8" BorderThickness="1" Padding="18,12" Margin="0,0,0,18"
+					        Background="{DynamicResource AccentSubtleBrush}" BorderBrush="{DynamicResource AccentBrush}">
+						<DockPanel>
+							<Button x:Name="UpdateReleaseButton" DockPanel.Dock="Right" Content="View release" Style="{StaticResource AccentButton}" Click="LinkButton_Click" />
+							<TextBlock Style="{StaticResource Icon}" Text="&#xE896;" Margin="0,0,12,0" Foreground="{DynamicResource AccentForegroundBrush}" />
+							<StackPanel VerticalAlignment="Center">
+								<TextBlock x:Name="UpdateBannerTitle" FontWeight="SemiBold" FontSize="14" />
+								<TextBlock Style="{StaticResource Caption}" Text="Updating is manual - download it from the release page." />
+							</StackPanel>
+						</DockPanel>
+					</Border>
+
+					<Border Style="{StaticResource Card}" Padding="18,16">
+						<StackPanel>
+							<TextBlock TextWrapping="Wrap" FontSize="14"
+							           Text="EVE-F-Preview is Farfnarkle's maintained fork of EVE-O Preview. It shows live thumbnails of your EVE Online clients for quick monitoring and switching." />
+							<TextBlock Style="{StaticResource Caption}" Margin="0,10,0,0"
+							           Text="Based on EVE-O Preview by its original creators and maintainers, including Phrynohyas Tig-Rah, Devilen, Dal Shooth, Izakbar, Aura Asuna, Makari Aeron, and StinkRay." />
+						</StackPanel>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Links" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="EVE-F-Preview on GitHub" Description="Source code, releases and issues.">
+								<Button x:Name="ForkLinkButton" Style="{StaticResource SubtleButton}" Click="LinkButton_Click" ToolTip="Open in browser">
+									<TextBlock Style="{StaticResource Icon}" Text="&#xE8A7;" FontSize="14" />
+								</Button>
+							</controls:SettingRow>
+							<controls:SettingRow Title="EVE-O Preview upstream" Description="The project this fork is based on.">
+								<Button x:Name="UpstreamLinkButton" Style="{StaticResource SubtleButton}" Click="LinkButton_Click" ToolTip="Open in browser">
+									<TextBlock Style="{StaticResource Icon}" Text="&#xE8A7;" FontSize="14" />
+								</Button>
+							</controls:SettingRow>
+							<controls:SettingRow Title="Original forum thread" Description="EVE Online forums discussion.">
+								<Button x:Name="ForumLinkButton" Style="{StaticResource SubtleButton}" Click="LinkButton_Click" ToolTip="Open in browser">
+									<TextBlock Style="{StaticResource Icon}" Text="&#xE8A7;" FontSize="14" />
+								</Button>
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+				</StackPanel>
+			</ScrollViewer>
+		</Grid>
+	</Grid>
+</Window>

@@ -1,6 +1,6 @@
 using EveFPreview.Configuration;
 using System;
-using System.Drawing;
+using System.Windows.Media.Imaging;
 
 namespace EveFPreview.Services
 {
@@ -23,6 +23,6 @@ namespace EveFPreview.Services
 		bool IsWindowMaximized(IntPtr handle);
 		bool IsWindowMinimized(IntPtr handle);
 		IDwmThumbnail GetLiveThumbnail(IntPtr destination, IntPtr source);
-		Image GetStaticThumbnail(IntPtr source);
+		BitmapSource GetStaticThumbnail(IntPtr source);
 	}
 }

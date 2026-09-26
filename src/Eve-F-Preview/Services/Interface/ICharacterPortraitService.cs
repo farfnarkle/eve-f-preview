@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.Drawing;
+using System.Windows.Media.Imaging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,7 +29,7 @@ namespace EveFPreview.Services
 
 		bool TryGetPortraitPath(string windowTitle, out string path);
 
-		/// <summary>Loads a copy of the cached portrait for the client, or null if unavailable. Caller must dispose the image.</summary>
-		Image TryLoadPortraitImage(string windowTitle);
+		/// <summary>Loads the cached portrait for the client (fully read, so the file is not kept open), or null if unavailable.</summary>
+		BitmapSource TryLoadPortraitImage(string windowTitle);
 	}
 }

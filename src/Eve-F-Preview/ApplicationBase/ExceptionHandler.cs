@@ -1,7 +1,6 @@
 using System;
 using System.IO;
-using System.Threading;
-using System.Windows.Forms;
+using System.Windows;
 
 namespace EveFPreview
 {
@@ -15,15 +14,14 @@ namespace EveFPreview
 		private const string EXCEPTION_DUMP_FILE_NAME = "EVE-F-Preview.log";
 		private const string EXCEPTION_MESSAGE = "EVE-F-Preview has encountered a problem and needs to close. Additional information has been saved in the crash log file.";
 
-		public void SetupExceptionHandlers()
+		public void SetupExceptionHandlers(Application application)
 		{
 			if (System.Diagnostics.Debugger.IsAttached)
 			{
 				return;
 			}
 
-			Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-			Application.ThreadException += delegate (Object sender, ThreadExceptionEventArgs e)
+			application.DispatcherUnhandledException += delegate (Object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
 			{
 				this.ExceptionEventHandler(e.Exception);
 			};
@@ -41,7 +39,7 @@ namespace EveFPreview
 				String exceptionMessage = exception.ToString();
 				File.WriteAllText(ExceptionHandler.EXCEPTION_DUMP_FILE_NAME, exceptionMessage);
 
-				MessageBox.Show(ExceptionHandler.EXCEPTION_MESSAGE, @"EVE-F-Preview", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				MessageBox.Show(ExceptionHandler.EXCEPTION_MESSAGE, @"EVE-F-Preview", MessageBoxButton.OK, MessageBoxImage.Error);
 			}
 			catch
 			{

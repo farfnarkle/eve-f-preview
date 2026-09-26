@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
-using System.Windows.Forms;
+using EveFPreview.UI.Hotkeys;
 
 namespace EveFPreview.Configuration
 {
@@ -116,9 +116,20 @@ namespace EveFPreview.Configuration
 		Color PreventPreviewColor { get; set; }
 		int ActiveClientHighlightThickness { get; set; }
 		Color OverlayLabelColor { get; set; }
-		Font OverlayLabelFont { get; set; }
+		OverlayFont OverlayLabelFont { get; set; }
 
 		string IconName { get; set; }
+
+		/// <summary>Settings window theme: "Dark", "Light", or empty to follow the Windows app theme.</summary>
+		string UiTheme { get; set; }
+
+		/// <summary>Last size of the settings window in DIPs; empty means the default size.</summary>
+		Size SettingsWindowSize { get; set; }
+
+		bool SettingsWindowTopmost { get; set; }
+
+		/// <summary>Changing the thumbnail width also changes the height (and back), keeping their ratio.</summary>
+		bool MaintainThumbnailAspectRatio { get; set; }
 		List<string> MinimizeAllClientsHotkeys { get; set; }
 		List<string> ToggleThumbnailsHotkeys { get; set; }
 		List<string> ClickThroughModifierHotkeys { get; set; }

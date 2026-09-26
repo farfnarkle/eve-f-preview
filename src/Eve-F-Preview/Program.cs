@@ -1,6 +1,5 @@
 using System;
 using System.Threading;
-using System.Windows.Forms;
 using EveFPreview.Configuration;
 using EveFPreview.Presenters;
 using EveFPreview.Services;
@@ -32,14 +31,15 @@ namespace EveFPreview
 				return;
 			}
 
+			// The WPF application object has to exist before any window is created; it carries the
+			// shared styles. The main view runs it (App.Run) once settings are loaded.
+			App application = new App();
+			application.InitializeComponent();
+
 			ExceptionHandler handler = new ExceptionHandler();
-			handler.SetupExceptionHandlers();
+			handler.SetupExceptionHandlers(application);
 
 			IApplicationController controller = Program.InitializeApplicationController();
-
-			Program.InitializeWinForms();
-
-			Application.SetCompatibleTextRenderingDefault(false);
 
 			controller.Run<MainFormPresenter>();
 		}
@@ -66,15 +66,6 @@ namespace EveFPreview
 				Mutex token = new Mutex(true, Program.MUTEX_NAME, out var result);
 				return result ? token : null;
 			}
-		}
-
-		private static void InitializeWinForms()
-		{
-			Application.EnableVisualStyles();
-			Application.SetCompatibleTextRenderingDefault(false);
-#if WINDOWS
-			Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
-#endif
 		}
 
 		private static IApplicationController InitializeApplicationController()
@@ -112,8 +103,7 @@ namespace EveFPreview
 			controller.RegisterView<StaticThumbnailView, StaticThumbnailView>();
 			controller.RegisterView<LiveThumbnailView, LiveThumbnailView>();
 
-			controller.RegisterView<IMainFormView, MainForm>();
-			controller.RegisterInstance(new ApplicationContext());
+			controller.RegisterView<IMainFormView, MainWindow>();
 
 			return controller;
 		}

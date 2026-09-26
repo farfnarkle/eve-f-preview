@@ -1,0 +1,38 @@
+<Window x:Class="EveFPreview.View.ThumbnailOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PreviewOverlay"
+        AllowsTransparency="True"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        SizeToContent="Manual"
+        WindowStartupLocation="Manual"
+        Background="Transparent"
+        Cursor="Hand"
+        TextOptions.TextFormattingMode="Display">
+	<!-- Near-invisible fill so the whole overlay takes the mouse; the live DWM thumbnail shows through it. -->
+	<Grid x:Name="RootGrid" Background="#01000000">
+		<!-- "Do not display previews": opaque surface with the character portrait, optionally framed by the highlight colour. -->
+		<Border x:Name="FakePreviewBorder" Visibility="Collapsed">
+			<Image x:Name="PortraitImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+		</Border>
+
+		<TextBlock x:Name="OverlayLabel"
+		           Margin="5"
+		           TextAlignment="Center"
+		           TextWrapping="NoWrap"
+		           HorizontalAlignment="Left"
+		           VerticalAlignment="Top" />
+
+		<!-- Same inset as the visible preview (inside the highlight border); badge sits above the label. -->
+		<Canvas x:Name="IndicatorLayer" ClipToBounds="True">
+			<Image x:Name="CycleGroupIndicator"
+			       Source="pack://application:,,,/EVE-F-Preview;component/Icons/CycleGroupIcon.png"
+			       Stretch="Uniform"
+			       Visibility="Collapsed"
+			       RenderOptions.BitmapScalingMode="HighQuality" />
+		</Canvas>
+	</Grid>
+</Window>

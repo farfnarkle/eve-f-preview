@@ -9,6 +9,7 @@ namespace EveFPreview.Services
 		void Stop();
 
 		void UpdateCycleGroupIndicator();
+		void UpdateOverlayLabels();
 		void UpdateThumbnailsSize();
 		void ApplyOverwatchSettings();
 		void UpdateThumbnailFrames();

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Windows.Forms;
+using EveFPreview.UI.Hotkeys;
 using Newtonsoft.Json;
 
 namespace EveFPreview.Configuration.Implementation
@@ -13,7 +13,6 @@ namespace EveFPreview.Configuration.Implementation
 
 		#region Private fields
 		private bool _enablePerClientThumbnailLayouts;
-		private bool _enableClientLayoutTracking;
 		#endregion
 
 		public ThumbnailConfiguration()
@@ -178,9 +177,13 @@ namespace EveFPreview.Configuration.Implementation
 			this.ActiveClientHighlightThickness = 3;
 
 			this.OverlayLabelColor = Color.Orange;
-			this.OverlayLabelFont = new Font(FontFamily.GenericSansSerif,10.0F, FontStyle.Bold);
+			this.OverlayLabelFont = OverlayFont.CreateDefault();
 
 			this.IconName = "";
+			this.UiTheme = string.Empty;
+			this.SettingsWindowSize = Size.Empty;
+			this.SettingsWindowTopmost = true;
+			this.MaintainThumbnailAspectRatio = false;
 
 			this.LoginThumbnailLocation = new Point(5, 5);
 
@@ -278,19 +281,11 @@ namespace EveFPreview.Configuration.Implementation
 		[JsonProperty("ThumbnailsOpacity")]
 		public double ThumbnailOpacity { get; set; }
 
-		public bool EnableClientLayoutTracking
-		{
-			get => this._enableClientLayoutTracking;
-			set
-			{
-				if (!value)
-				{
-					this.ClientLayout.Clear();
-				}
-
-				this._enableClientLayoutTracking = value;
-			}
-		}
+		// Used to unconditionally wipe every saved per-client window position/size (ClientLayout.Clear())
+		// whenever this was turned off. Nothing reads or writes ClientLayout while tracking is
+		// disabled, so there was never a reason to also destroy it - turning tracking back on should
+		// pick up where it left off, not force everyone to re-arrange every window from scratch.
+		public bool EnableClientLayoutTracking { get; set; }
 
 		public bool HideActiveClientThumbnail { get; set; }
 		public bool HideLoginClientThumbnail { get; set; }
@@ -397,8 +392,20 @@ namespace EveFPreview.Configuration.Implementation
 		public Color OverlayLabelColor { get; set; }
 
 		[JsonProperty]
-		public Font OverlayLabelFont { get; set; }
+		public OverlayFont OverlayLabelFont { get; set; }
 		public string IconName { get; set; }
+
+		[JsonProperty("UiTheme")]
+		public string UiTheme { get; set; }
+
+		[JsonProperty("SettingsWindowSize")]
+		public Size SettingsWindowSize { get; set; }
+
+		[JsonProperty("SettingsWindowTopmost")]
+		public bool SettingsWindowTopmost { get; set; }
+
+		[JsonProperty("MaintainThumbnailAspectRatio")]
+		public bool MaintainThumbnailAspectRatio { get; set; }
 
 		public int ActiveClientHighlightThickness { get; set; }
 
@@ -664,6 +671,7 @@ namespace EveFPreview.Configuration.Implementation
 			this.AutoSettingsSyncChannelKeysToKeep ??= new List<string>();
 			this.AutoSettingsSyncChannelKeysToStrip ??= new List<string>();
 			this.AutoSettingsSyncProfileName ??= string.Empty;
+			this.UiTheme ??= string.Empty;
 			this.CycleGroupExclusions ??= new Dictionary<string, bool>();
 			this.AutoSettingsSyncChannelKeysToKeepByDestination ??= new Dictionary<string, List<string>>();
 		}

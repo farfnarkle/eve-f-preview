@@ -1,0 +1,120 @@
+<UserControl x:Class="EveFPreview.View.CycleGroupsSettingsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	<UserControl.Resources>
+		<!-- Grid cells edit in place: no box until hovered or focused. -->
+		<Style x:Key="CellTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderBrush" Value="Transparent" />
+			<Setter Property="MinHeight" Value="30" />
+			<Setter Property="Margin" Value="0,0,6,0" />
+		</Style>
+	</UserControl.Resources>
+
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+
+		<Border Style="{StaticResource Card}" Padding="6,2,6,6">
+			<Grid>
+				<DataGrid x:Name="ClientsGrid"
+				          AutoGenerateColumns="False"
+				          CanUserAddRows="False"
+				          CanUserDeleteRows="False"
+				          CanUserResizeRows="False"
+				          CanUserReorderColumns="False"
+				          CanUserSortColumns="False"
+				          SelectionMode="Extended"
+				          SelectionUnit="FullRow"
+				          RowHeight="42">
+					<DataGrid.Columns>
+						<DataGridTemplateColumn Header="CLIENT (WINDOW TITLE)" Width="60*">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<TextBox Text="{Binding Client, UpdateSourceTrigger=LostFocus}" Style="{StaticResource CellTextBox}" />
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
+						<DataGridTemplateColumn Header="GROUP" Width="25*" MinWidth="120">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<ComboBox ItemsSource="{Binding GroupChoices}" SelectedItem="{Binding Group, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" />
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
+						<DataGridTemplateColumn Header="ORDER" Width="15*" MinWidth="70">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<TextBox Text="{Binding Order, UpdateSourceTrigger=LostFocus}" Style="{StaticResource CellTextBox}" />
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
+						<DataGridTemplateColumn Width="44" CanUserResize="False">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<Button Style="{StaticResource SubtleButton}" ToolTip="Remove" Click="DeleteRowButton_Click" Padding="6,4">
+										<TextBlock Style="{StaticResource Icon}" Text="&#xE74D;" FontSize="13" />
+									</Button>
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
+					</DataGrid.Columns>
+				</DataGrid>
+
+				<TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,40,0,0" IsHitTestVisible="False"
+				           Text="No clients assigned yet. Add one below.">
+					<TextBlock.Style>
+						<Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+							<Style.Triggers>
+								<DataTrigger Binding="{Binding HasItems, ElementName=ClientsGrid}" Value="True">
+									<Setter Property="Visibility" Value="Collapsed" />
+								</DataTrigger>
+							</Style.Triggers>
+						</Style>
+					</TextBlock.Style>
+				</TextBlock>
+			</Grid>
+		</Border>
+
+		<Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,12,0,0" Padding="16,14">
+			<Grid>
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="Auto" />
+					<ColumnDefinition Width="*" />
+					<ColumnDefinition Width="Auto" />
+				</Grid.ColumnDefinitions>
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="Auto" />
+				</Grid.RowDefinitions>
+
+				<TextBlock Text="Running client" VerticalAlignment="Center" Margin="0,0,16,0" />
+				<ComboBox x:Name="ActiveClientCombo" Grid.Column="1" Margin="0,0,8,0" />
+				<Button x:Name="AddActiveClientButton" Grid.Column="2" Style="{StaticResource AccentButton}" MinWidth="110" Click="AddActiveClientButton_Click">
+					<StackPanel Orientation="Horizontal">
+						<TextBlock Style="{StaticResource Icon}" Text="&#xE710;" FontSize="12" Margin="0,0,8,0" Foreground="{DynamicResource AccentTextBrush}" />
+						<TextBlock Text="Add" />
+					</StackPanel>
+				</Button>
+
+				<TextBlock Grid.Row="1" Text="Window title" VerticalAlignment="Center" Margin="0,10,16,0" />
+				<TextBox x:Name="ManualClientTextBox" Grid.Row="1" Grid.Column="1" Margin="0,10,8,0" ToolTip="The exact window title, e.g. &quot;EVE - Character Name&quot;" />
+				<Button Grid.Row="1" Grid.Column="2" Style="{StaticResource ActionButton}" MinWidth="110" Margin="0,10,0,0" Click="AddManualClientButton_Click">
+					<StackPanel Orientation="Horizontal">
+						<TextBlock Style="{StaticResource Icon}" Text="&#xE710;" FontSize="12" Margin="0,0,8,0" />
+						<TextBlock Text="Add" />
+					</StackPanel>
+				</Button>
+
+				<DockPanel Grid.Row="2" Grid.ColumnSpan="3" Margin="0,14,0,0">
+					<Button DockPanel.Dock="Right" Content="Remove selected" Style="{StaticResource DangerButton}" Click="RemoveSelectedButton_Click" />
+					<TextBlock Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="0,0,16,0"
+					           Text="Lower order numbers cycle first. Group hotkeys are set on the Hotkeys page." />
+				</DockPanel>
+			</Grid>
+		</Border>
+	</Grid>
+</UserControl>

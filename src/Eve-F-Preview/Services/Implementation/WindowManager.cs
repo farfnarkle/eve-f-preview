@@ -1,7 +1,9 @@
 using System;
-using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 using EveFPreview.Configuration;
 using EveFPreview.Services.Interop;
 using EveFPreview.UI.Hotkeys;
@@ -309,7 +311,7 @@ namespace EveFPreview.Services.Implementation
 			return thumbnail;
 		}
 
-		public Image GetStaticThumbnail(IntPtr source)
+		public BitmapSource GetStaticThumbnail(IntPtr source)
 		{
 			var sourceContext = User32NativeMethods.GetDC(source);
 
@@ -335,10 +337,16 @@ namespace EveFPreview.Services.Implementation
 			Gdi32NativeMethods.DeleteDC(destContext);
 			User32NativeMethods.ReleaseDC(source, sourceContext);
 
-			Image image = Image.FromHbitmap(bitmap);
-			Gdi32NativeMethods.DeleteObject(bitmap);
-
-			return image;
+			try
+			{
+				BitmapSource image = Imaging.CreateBitmapSourceFromHBitmap(bitmap, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+				image.Freeze();
+				return image;
+			}
+			finally
+			{
+				Gdi32NativeMethods.DeleteObject(bitmap);
+			}
 		}
 	}
 }

@@ -17,7 +17,7 @@ namespace EveFPreview.View
 			: base(windowManager, config, thumbnailManager, characterPortraitService)
 		{
 			this._startLocation = new Point(0, 0);
-			this._endLocation = new Point(this.ClientSize);
+			this._endLocation = new Point(this.ThumbnailSize);
 		}
 
 		protected override void RefreshThumbnail(bool forceRefresh)
@@ -86,4 +86,4 @@ namespace EveFPreview.View
 		}
 	}
 }
-
+

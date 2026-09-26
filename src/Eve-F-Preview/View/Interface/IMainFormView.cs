@@ -71,9 +71,17 @@ namespace EveFPreview.View
 		Color ActiveClientHighlightColor { get; set; }
 		Color PreventPreviewColor { get; set; }
 		Color OverlayLabelColor { get; set; }
-		Font OverlayLabelFont { get; set; }
+		OverlayFont OverlayLabelFont { get; set; }
 
 		string IconName { get; set; }
+
+		/// <summary>"Dark", "Light", or empty (follow Windows) - see ThemeManager.</summary>
+		string UiTheme { get; set; }
+
+		/// <summary>The settings window's own (restored) size in DIPs; empty keeps the default.</summary>
+		Size SettingsWindowSize { get; set; }
+		bool SettingsWindowTopmost { get; set; }
+		bool MaintainThumbnailAspectRatio { get; set; }
 
 		GlobalShortcutSettings GetGlobalShortcutSettings();
 		void SetGlobalShortcutSettings(GlobalShortcutSettings settings);

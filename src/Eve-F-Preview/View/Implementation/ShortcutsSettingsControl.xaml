@@ -1,0 +1,140 @@
+<UserControl x:Class="EveFPreview.View.ShortcutsSettingsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:EveFPreview.View"
+             xmlns:controls="clr-namespace:EveFPreview.View.Controls"
+             Unloaded="UserControl_Unloaded">
+	<UserControl.Resources>
+		<!-- The hotkey box: shows the current combination; click it, then press keys to record a new one. -->
+		<Style x:Key="HotkeyChip" TargetType="Button">
+			<Setter Property="Width" Value="150" />
+			<Setter Property="Height" Value="32" />
+			<Setter Property="Cursor" Value="Hand" />
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+			<Setter Property="Background" Value="{DynamicResource InputFillBrush}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+			<Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+			<Setter Property="ToolTip" Value="Click, then press a key combination, mouse button 4/5 or middle click. Esc cancels; Delete clears." />
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="Button">
+						<Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6" SnapsToDevicePixels="True">
+							<TextBlock Text="{Binding DisplayText}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" />
+						</Border>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+			<Style.Triggers>
+				<Trigger Property="IsMouseOver" Value="True">
+					<Setter Property="BorderBrush" Value="{DynamicResource ControlBorderHoverBrush}" />
+				</Trigger>
+				<DataTrigger Binding="{Binding HasHotkey}" Value="False">
+					<Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+					<Setter Property="FontWeight" Value="Normal" />
+				</DataTrigger>
+				<DataTrigger Binding="{Binding IsRecording}" Value="True">
+					<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+					<Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+					<Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+					<Setter Property="FontWeight" Value="Normal" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+
+		<Style x:Key="HotkeyClearButton" TargetType="Button" BasedOn="{StaticResource SubtleButton}">
+			<Setter Property="Width" Value="28" />
+			<Setter Property="MinHeight" Value="28" />
+			<Setter Property="Padding" Value="0" />
+			<Setter Property="Margin" Value="4,0,0,0" />
+			<Setter Property="ToolTip" Value="Clear" />
+			<Setter Property="Visibility" Value="Hidden" />
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding HasHotkey}" Value="True">
+					<Setter Property="Visibility" Value="Visible" />
+				</DataTrigger>
+				<DataTrigger Binding="{Binding IsRecording}" Value="True">
+					<Setter Property="Visibility" Value="Hidden" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+
+		<DataTemplate x:Key="HotkeyEditor">
+			<StackPanel Orientation="Horizontal">
+				<Button Style="{StaticResource HotkeyChip}" Click="HotkeyChip_Click" />
+				<Button Style="{StaticResource HotkeyClearButton}" Click="HotkeyClearButton_Click">
+					<TextBlock Style="{StaticResource Icon}" Text="&#xE711;" FontSize="10" />
+				</Button>
+			</StackPanel>
+		</DataTemplate>
+
+		<!-- Column captions above the forward / backward boxes. -->
+		<Grid x:Key="PairHeader" x:Shared="False" Margin="18,12,16,8">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="182" />
+				<ColumnDefinition Width="198" />
+			</Grid.ColumnDefinitions>
+			<TextBlock Grid.Column="1" Style="{StaticResource Caption}" FontWeight="SemiBold" Text="FORWARD" />
+			<TextBlock Grid.Column="2" Style="{StaticResource Caption}" FontWeight="SemiBold" Text="BACKWARD" Margin="16,0,0,0" />
+		</Grid>
+
+		<DataTemplate x:Key="HotkeyPairTemplate">
+			<Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0" Padding="18,9,16,9">
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="182" />
+						<ColumnDefinition Width="198" />
+					</Grid.ColumnDefinitions>
+					<TextBlock Text="{Binding Label}" FontSize="14" VerticalAlignment="Center" />
+					<ContentControl Grid.Column="1" Content="{Binding Forward}" ContentTemplate="{StaticResource HotkeyEditor}" Focusable="False" />
+					<ContentControl Grid.Column="2" Content="{Binding Backward}" ContentTemplate="{StaticResource HotkeyEditor}" Focusable="False" Margin="16,0,0,0" />
+				</Grid>
+			</Border>
+		</DataTemplate>
+
+		<DataTemplate x:Key="HotkeyRowTemplate">
+			<controls:SettingRow Title="{Binding Label}">
+				<ContentControl Content="{Binding}" ContentTemplate="{StaticResource HotkeyEditor}" Focusable="False" />
+			</controls:SettingRow>
+		</DataTemplate>
+	</UserControl.Resources>
+
+	<StackPanel>
+		<StackPanel x:Name="CycleGroupSection">
+			<TextBlock Style="{StaticResource SectionTitle}" Text="Cycle group hotkeys" />
+			<Border Style="{StaticResource Card}">
+				<StackPanel>
+					<ContentControl Content="{StaticResource PairHeader}" Focusable="False" />
+					<ItemsControl x:Name="CycleGroupRows" ItemTemplate="{StaticResource HotkeyPairTemplate}" Focusable="False" />
+				</StackPanel>
+			</Border>
+			<TextBlock Style="{StaticResource Caption}" Margin="2,8,0,0" Text="{x:Static local:SettingsHelpText.CycleGroups}" />
+		</StackPanel>
+
+		<StackPanel x:Name="DynamicCycleSection">
+			<TextBlock Style="{StaticResource SectionTitle}" Text="Dynamic cycle hotkeys" />
+			<Border Style="{StaticResource Card}">
+				<StackPanel>
+					<ContentControl Content="{StaticResource PairHeader}" Focusable="False" />
+					<ItemsControl x:Name="DynamicCycleRows" ItemTemplate="{StaticResource HotkeyPairTemplate}" Focusable="False" />
+				</StackPanel>
+			</Border>
+			<TextBlock Style="{StaticResource Caption}" Margin="2,8,0,0" Text="{x:Static local:SettingsHelpText.DynamicCycleHotkeys}" />
+		</StackPanel>
+
+		<TextBlock Style="{StaticResource SectionTitle}" Text="Other hotkeys" />
+		<Border Style="{StaticResource Card}">
+			<StackPanel>
+				<ItemsControl x:Name="OtherRows" ItemTemplate="{StaticResource HotkeyRowTemplate}" Focusable="False" />
+				<controls:SettingRow Title="Click-through while held" Description="{x:Static local:SettingsHelpText.ClickThrough}" ShowDivider="False">
+					<ComboBox x:Name="ClickThroughModifierCombo" Width="182" SelectionChanged="ClickThroughModifierCombo_SelectionChanged" />
+				</controls:SettingRow>
+			</StackPanel>
+		</Border>
+
+		<TextBlock Style="{StaticResource Caption}" Margin="2,10,0,0"
+		           Text="Click a box, then press a key combination, mouse button 4/5 or middle click. Esc cancels; Delete or Backspace clears." />
+	</StackPanel>
+</UserControl>

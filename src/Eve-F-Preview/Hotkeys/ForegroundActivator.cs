@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Windows.Forms;
+using System.Windows.Interop;
+using System.Windows.Threading;
 using EveFPreview.Services.Interop;
 
 namespace EveFPreview.UI.Hotkeys
@@ -37,7 +38,7 @@ namespace EveFPreview.UI.Hotkeys
 		private static readonly object Sync = new object();
 		private static readonly List<InternalHotkeyFilter> Filters = new List<InternalHotkeyFilter>();
 		private static readonly Queue<PendingActivation> Pending = new Queue<PendingActivation>();
-		private static Timer _watchdog;
+		private static DispatcherTimer _watchdog;
 		private static bool _registered;
 		private static bool _pressInFlight;
 
@@ -61,19 +62,15 @@ namespace EveFPreview.UI.Hotkeys
 				return;
 			}
 
-			// RegisterHotKey ties the hotkey to the calling thread's message queue, and
-			// Application.AddMessageFilter only sees messages pumped by the UI thread's message
-			// loop. Callers can reach us from a background thread - registering there would tie the
+			// RegisterHotKey ties the hotkey to the calling thread's message queue, and the
+			// ComponentDispatcher filter only sees messages pumped by the UI thread's dispatcher.
+			// Callers can reach us from a background thread - registering there would tie the
 			// hotkey to a thread that never pumps messages, silently breaking activation for the
 			// rest of the process's lifetime.
-			if (Application.OpenForms.Count > 0)
+			if (UiThread.IsRequired)
 			{
-				Form host = Application.OpenForms[0];
-				if (host.InvokeRequired)
-				{
-					host.BeginInvoke(new Action(() => ForegroundActivator.Enqueue(handle, onCompleted)));
-					return;
-				}
+				UiThread.Run(() => ForegroundActivator.Enqueue(handle, onCompleted));
+				return;
 			}
 
 			Enqueue(handle, onCompleted);
@@ -235,8 +232,8 @@ namespace EveFPreview.UI.Hotkeys
 			User32NativeMethods.keybd_event(VirtualKeyCode, 0, 0, UIntPtr.Zero);
 			User32NativeMethods.keybd_event(VirtualKeyCode, 0, User32NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
 
-			_watchdog ??= new Timer();
-			_watchdog.Interval = WatchdogMilliseconds;
+			_watchdog ??= new DispatcherTimer();
+			_watchdog.Interval = TimeSpan.FromMilliseconds(WatchdogMilliseconds);
 			_watchdog.Tick -= Watchdog_Tick;
 			_watchdog.Tick += Watchdog_Tick;
 			_watchdog.Start();
@@ -293,7 +290,7 @@ namespace EveFPreview.UI.Hotkeys
 				if (filter.Register())
 				{
 					Filters.Add(filter);
-					Application.AddMessageFilter(filter);
+					ComponentDispatcher.ThreadFilterMessage += filter.ThreadFilterMessage;
 				}
 			}
 
@@ -328,7 +325,7 @@ namespace EveFPreview.UI.Hotkeys
 			}
 		}
 
-		private sealed class InternalHotkeyFilter : IMessageFilter
+		private sealed class InternalHotkeyFilter
 		{
 			private readonly int _id;
 			private readonly uint _modifiers;
@@ -344,15 +341,15 @@ namespace EveFPreview.UI.Hotkeys
 				return HotkeyHandlerNativeMethods.RegisterHotKey(IntPtr.Zero, this._id, this._modifiers, ForegroundActivator.VirtualKeyCode);
 			}
 
-			public bool PreFilterMessage(ref Message m)
+			public void ThreadFilterMessage(ref MSG m, ref bool handled)
 			{
-				if (m.Msg != HotkeyHandlerNativeMethods.WM_HOTKEY || m.WParam.ToInt32() != this._id)
+				if (handled || m.message != (int)HotkeyHandlerNativeMethods.WM_HOTKEY || m.wParam.ToInt32() != this._id)
 				{
-					return false;
+					return;
 				}
 
 				ForegroundActivator.OnHotkeyFired();
-				return true;
+				handled = true;
 			}
 		}
 	}

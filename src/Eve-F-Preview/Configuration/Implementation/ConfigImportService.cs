@@ -14,7 +14,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Windows.Forms;
+using EveFPreview.UI.Hotkeys;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -190,8 +190,8 @@ namespace EveFPreview.Configuration.Implementation
 				JToken sizeToken = FindToken(profile, globalSettings, "ThumbnailTextSize");
 				if (sizeToken != null && sizeToken.Type != JTokenType.Null && float.TryParse(sizeToken.ToString(), out float fontSize) && fontSize > 0)
 				{
-					Font existing = config.OverlayLabelFont ?? new Font(FontFamily.GenericSansSerif, 10.0F, FontStyle.Bold);
-					config.OverlayLabelFont = new Font(existing.FontFamily, fontSize, existing.Style);
+					OverlayFont existing = config.OverlayLabelFont ?? OverlayFont.CreateDefault();
+					config.OverlayLabelFont = existing.WithSize(fontSize);
 				}
 			});
 
@@ -401,7 +401,7 @@ namespace EveFPreview.Configuration.Implementation
 
 		/// <summary>
 		/// Converts AHK-style hotkey strings (e.g. "ctrl & 1", "^!F1", "XButton1") into a
-		/// WinForms Keys value. Mouse 4/5 and middle click are supported as the primary key.
+		/// Keys value. Mouse 4/5 and middle click are supported as the primary key.
 		/// Mouse+keyboard chords (e.g. "XButton1 & 1") are skipped.
 		/// </summary>
 		private static bool TryConvertAhkHotkey(string ahk, out Keys keys)
@@ -422,7 +422,7 @@ namespace EveFPreview.Configuration.Implementation
 					case '^': modifiers |= Keys.Control; break;
 					case '!': modifiers |= Keys.Alt; break;
 					case '+': modifiers |= Keys.Shift; break;
-					case '#': return false; // Windows key modifier is not supported as a WinForms hotkey.
+					case '#': return false; // Windows key modifier is not supported as a hotkey.
 				}
 
 				s = s.Substring(1);

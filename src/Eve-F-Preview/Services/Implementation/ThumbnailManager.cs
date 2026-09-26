@@ -11,8 +11,6 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Reflection.Metadata;
-using System.Windows.Controls;
-using System.Windows.Forms;
 using System.Windows.Threading;
 
 namespace EveFPreview.Services
@@ -670,21 +668,7 @@ namespace EveFPreview.Services
 
 		private void InvokeOnUiThread(Action action)
 		{
-			if (Application.OpenForms.Count == 0)
-			{
-				action();
-				return;
-			}
-
-			Form host = Application.OpenForms[0];
-			if (host.InvokeRequired)
-			{
-				host.BeginInvoke(action);
-			}
-			else
-			{
-				action();
-			}
+			UiThread.Run(action);
 		}
 
 		public void SuspendGlobalHotkeys()
@@ -990,7 +974,8 @@ namespace EveFPreview.Services
 		{
 			// Unlike dynamic cycling, the indicator keeps cycle-excluded clients in the grid - a
 			// square is the only way to toggle exclusion back off, so hiding it here would strand
-			// it (shift-click mirrors the same gesture on the real thumbnail).
+			// it (shift-click mirrors the same gesture on the real thumbnail). Clients whose
+			// thumbnail is switched off on the Clients page are still shown, as ordinary squares.
 			List<KeyValuePair<IntPtr, IThumbnailView>> candidates = this._thumbnailViews.ToList();
 
 			List<List<KeyValuePair<IntPtr, IThumbnailView>>> rows = ThumbnailManager.GroupThumbnailsIntoRows(candidates);
@@ -1003,7 +988,6 @@ namespace EveFPreview.Services
 						x.Key,
 						x.Value.Title,
 						x.Key == this._activeClient.Handle,
-						this._configuration.IsThumbnailDisabled(x.Value.Title),
 						x.Value.IsExcludedFromCycleGroup))
 					.ToList())
 				.ToList();
@@ -1396,6 +1380,14 @@ namespace EveFPreview.Services
 		{
 			this.SetThumbnailsSize(this._configuration.ThumbnailSize);
 		}
+		public void UpdateOverlayLabels()
+		{
+			foreach (KeyValuePair<IntPtr, IThumbnailView> entry in this._thumbnailViews)
+			{
+				entry.Value.SetOverlayLabel();
+			}
+		}
+
 		public void UpdateCycleGroupIndicator()
 		{
 			this.SetCycleGroupIndicator(this._configuration.CycleGroupIndicatorAnchor);
@@ -1898,15 +1890,14 @@ namespace EveFPreview.Services
 			int bestDistanceX = thresholdX + 1;
 			int bestDistanceY = thresholdY + 1;
 
-			Rectangle virtualScreen = SystemInformation.VirtualScreen;
+			Rectangle virtualScreen = DisplayMonitors.VirtualScreen;
 			this.ConsiderSnapDelta(virtualScreen.Left - x, ref deltaX, ref bestDistanceX, thresholdX);
 			this.ConsiderSnapDelta(virtualScreen.Right - right, ref deltaX, ref bestDistanceX, thresholdX);
 			this.ConsiderSnapDelta(virtualScreen.Top - y, ref deltaY, ref bestDistanceY, thresholdY);
 			this.ConsiderSnapDelta(virtualScreen.Bottom - bottom, ref deltaY, ref bestDistanceY, thresholdY);
 
-			foreach (Screen screen in Screen.AllScreens)
+			foreach (Rectangle bounds in DisplayMonitors.GetMonitorBounds())
 			{
-				Rectangle bounds = screen.Bounds;
 				this.ConsiderSnapDelta(bounds.Left - x, ref deltaX, ref bestDistanceX, thresholdX);
 				this.ConsiderSnapDelta(bounds.Right - right, ref deltaX, ref bestDistanceX, thresholdX);
 				this.ConsiderSnapDelta(bounds.Top - y, ref deltaY, ref bestDistanceY, thresholdY);
@@ -1975,15 +1966,41 @@ namespace EveFPreview.Services
 			return false;
 		}
 		private void ApplyCaptionBar(IThumbnailView view)
-
 		{
 			if (view.Title == ThumbnailManager.DEFAULT_CLIENT_TITLE) return;
-			IntPtr handle = view.Id;
 
 			bool enable = this._configuration.HideCaptionOnClients;
+
+			// "Hide caption bar" is a one-way opt-in: hide it when asked, but never force it back on
+			// when the setting is off. It used to do both - unchecked actively ADDED WS_CAPTION /
+			// WS_THICKFRAME to any window missing them, on every refresh, fighting EVE's own window
+			// mode. A client running EVE's borderless "Fixed Window" mode deliberately has neither
+			// style; forcing them back on shrinks its client area out from under a renderer already
+			// sized for the borderless rect - "hide caption bar unchecked" should mean "leave EVE's
+			// own window styling alone", not "force a caption onto it".
+			if (!enable)
+			{
+				return;
+			}
+
+			IntPtr handle = view.Id;
 			bool changed = false;
-			changed = changed | SetWindowStyle(view, InteropConstants.WS_CAPTION, enable);
-			changed = changed | SetWindowStyle(view, InteropConstants.WS_THICKFRAME, enable);
+			changed = changed | SetWindowStyle(view, InteropConstants.WS_CAPTION, true);
+			changed = changed | SetWindowStyle(view, InteropConstants.WS_THICKFRAME, true);
+
+			if (changed)
+			{
+				// SetWindowLong alone doesn't take effect for frame-affecting styles like these -
+				// without a SWP_FRAMECHANGED nudge, Windows keeps using the window's old non-client
+				// metrics, so the OS-reported client area no longer matches what EVE's own renderer
+				// thinks it's drawing into. That mismatch is exactly what looked like "stuck zoomed
+				// in": EVE keeps its existing swap chain sized for the pre-toggle client rect, and
+				// nothing but a full re-init (resolution change, fullscreen toggle, or a fresh launch
+				// with the caption never touched) makes it recompute.
+				WindowNativeMethods.SetWindowPos(handle, IntPtr.Zero, 0, 0, 0, 0,
+					WindowNativeMethods.SWP_NOMOVE | WindowNativeMethods.SWP_NOSIZE | WindowNativeMethods.SWP_NOZORDER
+					| WindowNativeMethods.SWP_NOACTIVATE | WindowNativeMethods.SWP_FRAMECHANGED);
+			}
 		}
 		private void ApplyClientLayout(IThumbnailView view)
 		{
@@ -2111,7 +2128,7 @@ namespace EveFPreview.Services
 			await this._mediator.Send(new SaveConfiguration());
 		}
 
-		// WinForms caps Form.ClientSize to MaximumSize; thumbnail views are created with ThumbnailMaximumSize, so overwatch must raise the cap before applying FocusedThumbnailSize.
+		// Thumbnail views cap their size to MaximumSize (as WinForms forms did); they are created with ThumbnailMaximumSize, so overwatch must raise the cap before applying FocusedThumbnailSize.
 		private static Size MaximumClientSizeForFocusedOverwatch(Size thumbnailMaximumClient, Size focusedClientSize)
 		{
 			return new Size(
@@ -2167,7 +2184,7 @@ namespace EveFPreview.Services
 			int tileWidth = this._configuration.ThumbnailSize.Width + 4;
 			int tileHeight = this._configuration.ThumbnailSize.Height + 4;
 
-			Rectangle workingArea = Screen.FromPoint(spawnLocation).WorkingArea;
+			Rectangle workingArea = DisplayMonitors.GetWorkingArea(spawnLocation);
 			int availableWidth = Math.Max(tileWidth, workingArea.Right - spawnLocation.X);
 			int columns = Math.Max(1, availableWidth / tileWidth);
 

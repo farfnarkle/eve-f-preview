@@ -1,8 +1,8 @@
 using System;
 using System.Drawing;
-using System.Windows.Forms;
 using EveFPreview.Configuration;
 using EveFPreview.Services;
+using EveFPreview.UI.Hotkeys;
 
 namespace EveFPreview.View
 {
