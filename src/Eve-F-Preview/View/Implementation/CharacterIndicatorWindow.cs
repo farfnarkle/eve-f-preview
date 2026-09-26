@@ -27,6 +27,10 @@ namespace EveFPreview.View
 		private const double CornerRadius = 4;
 
 		private const int WM_STYLECHANGING = 0x007C;
+		private const int WM_GETMINMAXINFO = 0x0024;
+
+		/// <summary>Byte offset of ptMinTrackSize within MINMAXINFO (after ptReserved, ptMaxSize, ptMaxPosition).</summary>
+		private const int MinTrackSizeOffset = 24;
 
 		/// <summary>Screen-pixel movement under which a press+release is treated as a click, not a drag.</summary>
 		private const int ClickDragThresholdPixels = 4;
@@ -92,6 +96,12 @@ namespace EveFPreview.View
 
 			this._handle = new WindowInteropHelper(this).EnsureHandle();
 			HwndSource.FromHwnd(this._handle).AddHook(this.WndProc);
+
+			// WPF caches the minimum window size from the WM_GETMINMAXINFO sent while the window
+			// was being created - before the hook above existed - and clamps SizeToContent to it.
+			// A resize makes Windows ask again, this time through the hook, so WPF re-caches it.
+			WindowNativeMethods.SetWindowPos(this._handle, IntPtr.Zero, 0, 0, 1, 1,
+				WindowNativeMethods.SWP_NOMOVE | WindowNativeMethods.SWP_NOZORDER | WindowNativeMethods.SWP_NOACTIVATE);
 
 			// TOOLWINDOW keeps it off the taskbar/alt-tab; NOACTIVATE keeps clicking or
 			// dragging it from ever making it the foreground window - it's a passive readout,
@@ -260,6 +270,15 @@ namespace EveFPreview.View
 				Marshal.Copy(lParam, styles, 0, 2);
 				styles[1] |= unchecked((int)(InteropConstants.WS_EX_TOOLWINDOW | InteropConstants.WS_EX_NOACTIVATE));
 				Marshal.Copy(styles, 0, lParam, 2);
+			}
+			else if (msg == WM_GETMINMAXINFO)
+			{
+				// Windows won't size an ordinary top-level window below SM_CXMINTRACK x SM_CYMINTRACK
+				// (136x39 at 100% scale), so a grid smaller than that - e.g. a single client - sat
+				// centered in an oversized pill. Let the window shrink to fit its content. Not marked
+				// handled: WPF's own handler has to see the lowered minimum, since its layout enforces it.
+				Marshal.WriteInt32(lParam, MinTrackSizeOffset, 1);
+				Marshal.WriteInt32(lParam, MinTrackSizeOffset + 4, 1);
 			}
 
 			return IntPtr.Zero;
