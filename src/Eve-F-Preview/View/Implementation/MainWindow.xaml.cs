@@ -902,7 +902,7 @@ namespace EveFPreview.View
 			this.VersionLabel.Text = version;
 		}
 
-		public void SetUpdateAvailable(string version, string url, bool showPopup)
+		public void SetUpdateAvailable(string version, string url, string releaseNotes, bool showPopup)
 		{
 			this.UpdateBannerTitle.Text = "Update available: " + version;
 			this.UpdateReleaseButton.Tag = url;
@@ -916,7 +916,7 @@ namespace EveFPreview.View
 			}
 
 			this._updatePopupShownFor = version;
-			this._updatePopup = new UpdateAvailableWindow(this.VersionLabel.Text, version, url, this.DocumentationLinkActivated);
+			this._updatePopup = new UpdateAvailableWindow(this.VersionLabel.Text, version, url, releaseNotes, this.DocumentationLinkActivated);
 			this._updatePopup.Closed += (s, e) =>
 			{
 				bool dontShowAgain = this._updatePopup != null && this._updatePopup.DontShowAgain;

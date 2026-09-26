@@ -16,7 +16,7 @@
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display"
         local:ThemeManager.UseThemedTitleBar="True">
-	<StackPanel Width="420">
+	<StackPanel Width="480">
 		<DockPanel Margin="24,22,24,0">
 			<Border DockPanel.Dock="Left" Width="40" Height="40" CornerRadius="20" Margin="0,0,16,0" VerticalAlignment="Top"
 			        Background="{DynamicResource AccentSubtleBrush}">
@@ -26,6 +26,13 @@
 			<StackPanel>
 				<TextBlock Text="Update available" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,6" />
 				<TextBlock x:Name="MessageText" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" LineHeight="19" />
+				<!-- Collapsed when the release has no notes; filled from the release description in code-behind. -->
+				<Border x:Name="ReleaseNotesPanel" Visibility="Collapsed" Margin="0,14,0,0" CornerRadius="4"
+				        Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+					<ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+						<TextBlock x:Name="ReleaseNotesText" TextWrapping="Wrap" Margin="12,10" LineHeight="18" FontSize="12" />
+					</ScrollViewer>
+				</Border>
 				<CheckBox x:Name="DontShowAgainCheckBox" Content="Don't show again for this version" Margin="0,16,0,0" />
 			</StackPanel>
 		</DockPanel>

@@ -4,7 +4,8 @@
 //   [ 2026.07.29 16:38:03 ] EVE System > Channel changed to Local : C-N4OD
 // Gate jumps, undocks, clone jumps and death clones all produce it, so no event needs
 // to be modelled separately. Only lines spoken by "EVE System" count, so a player typing
-// the same text in Local cannot move the overlay.
+// the same text in Local cannot move the overlay (the match is anchored to the line's own
+// timestamp and speaker, so quoting the system line inside a message does not count either).
 //
 // Chat logs are UTF-16LE and EVE writes a BOM in front of every line. They exist only while
 // chat logging is enabled in the client; without it the system stays unknown.
@@ -28,8 +29,10 @@ namespace EveFPreview.Services.Implementation
 			@"^\s*Listener:\s*(?<name>.+?)\s*$",
 			RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Multiline);
 
+		// Anchored to the line's own "[ timestamp ] speaker >" prefix. Unanchored, a player typing
+		// "] EVE System > Channel changed to Local : Jita" would match inside their own message.
 		private static readonly Regex ChannelChangedRegex = new Regex(
-			@"\]\s*EVE System\s*>\s*Channel changed to Local\s*:\s*(?<system>.+?)\s*$",
+			@"^\s*\[[^\]]*\]\s*EVE System\s*>\s*Channel changed to Local\s*:\s*(?<system>.+?)\s*$",
 			RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
 		private static readonly TimeSpan DirectoryScanInterval = TimeSpan.FromSeconds(5);

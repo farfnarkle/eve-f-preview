@@ -23,6 +23,13 @@ namespace EveFPreview.Services
 		/// </summary>
 		Task RefreshAllConfiguredPortraitsAsync(CancellationToken cancellationToken = default);
 
+		/// <summary>
+		/// Records the character id the client was launched with (read from its command line) for the
+		/// given window title. Portrait downloads use it instead of a name search once ESI confirms
+		/// the id belongs to that name.
+		/// </summary>
+		void SetLaunchCharacterId(string windowTitle, int characterId);
+
 		IReadOnlyList<string> GetConfiguredClientTitles();
 
 		IReadOnlyList<string> GetClientsMissingPortraitFiles();

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -31,6 +32,9 @@ namespace EveFPreview.Services.Implementation
 		private readonly IMediator _mediator;
 		private readonly object _syncRoot = new object();
 		private readonly SemaphoreSlim _refreshGate = new SemaphoreSlim(1, 1);
+		// Written on the UI thread as clients are detected, read by the download tasks.
+		private readonly ConcurrentDictionary<string, int> _launchCharacterIds =
+			new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
 		public CharacterPortraitService(IThumbnailConfiguration configuration, IConfigurationStorage configurationStorage, IMediator mediator)
 		{
@@ -110,6 +114,14 @@ namespace EveFPreview.Services.Implementation
 			finally
 			{
 				this._refreshGate.Release();
+			}
+		}
+
+		public void SetLaunchCharacterId(string windowTitle, int characterId)
+		{
+			if (characterId > 0 && this.IsPortraitClientTitle(windowTitle))
+			{
+				this._launchCharacterIds[windowTitle] = characterId;
 			}
 		}
 
@@ -219,7 +231,8 @@ namespace EveFPreview.Services.Implementation
 					return;
 				}
 
-				int? characterId = await this.ResolveCharacterIdAsync(characterName, cancellationToken).ConfigureAwait(false);
+				int? characterId = await this.TryGetVerifiedLaunchCharacterIdAsync(windowTitle, characterName, cancellationToken).ConfigureAwait(false)
+					?? await this.ResolveCharacterIdAsync(characterName, cancellationToken).ConfigureAwait(false);
 				if (characterId == null)
 				{
 					this.Log($"Failed '{windowTitle}': could not resolve ESI character id for '{characterName}'.");
@@ -247,6 +260,55 @@ namespace EveFPreview.Services.Implementation
 			{
 				this.Log($"Failed '{windowTitle}': {ex.Message}");
 				Debug.WriteLine(ex);
+			}
+		}
+
+		/// <summary>
+		/// The id from the client's command line, if there is one and ESI agrees it belongs to
+		/// <paramref name="characterName"/>. The command line only names the character the client
+		/// was launched into, so after a log-off to character selection (or when this app started
+		/// after the clients) the window may be showing someone else - hence the check. Returns null
+		/// to fall back to the name search.
+		/// </summary>
+		private async Task<int?> TryGetVerifiedLaunchCharacterIdAsync(string windowTitle, string characterName, CancellationToken cancellationToken)
+		{
+			if (!this._launchCharacterIds.TryGetValue(windowTitle, out int launchCharacterId))
+			{
+				return null;
+			}
+
+			try
+			{
+				string url = $"https://esi.evetech.net/latest/characters/{launchCharacterId}/?datasource=tranquility";
+				using HttpResponseMessage response = await SharedHttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+				if (!response.IsSuccessStatusCode)
+				{
+					this.Log($"Launch id {launchCharacterId} for '{windowTitle}' not usable (ESI {(int)response.StatusCode}); searching by name.");
+					return null;
+				}
+
+				await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+				using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+				if (document.RootElement.TryGetProperty("name", out JsonElement nameElement)
+					&& nameElement.ValueKind == JsonValueKind.String
+					&& string.Equals(nameElement.GetString(), characterName, StringComparison.OrdinalIgnoreCase))
+				{
+					this.Log($"Using launch character id {launchCharacterId} for '{windowTitle}'.");
+					return launchCharacterId;
+				}
+
+				// Not this character (switched at character selection) - don't retry it for this title.
+				this._launchCharacterIds.TryRemove(windowTitle, out _);
+				this.Log($"Launch id {launchCharacterId} is not '{characterName}'; searching by name.");
+				return null;
+			}
+			catch (Exception ex) when (ex is HttpRequestException
+				|| ex is JsonException
+				|| (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested)) // HttpClient timeout
+			{
+				this.Log($"Could not verify launch id {launchCharacterId} for '{windowTitle}': {ex.Message}");
+				return null;
 			}
 		}
 

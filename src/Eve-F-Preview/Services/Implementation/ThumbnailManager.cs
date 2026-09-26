@@ -43,6 +43,7 @@ namespace EveFPreview.Services
 		private readonly IThumbnailViewFactory _thumbnailViewFactory;
 		private readonly IEveLocationService _locationService;
 		private readonly ICharacterIndicatorManager _characterIndicatorManager;
+		private readonly ICharacterPortraitService _characterPortraitService;
 		private readonly Dictionary<IntPtr, IThumbnailView> _thumbnailViews;
 
 		private (IntPtr Handle, string Title) _activeClient;
@@ -73,6 +74,8 @@ namespace EveFPreview.Services
 		private User32NativeMethods.WinEventProc _foregroundWinEventDelegate;
 		private IntPtr _thumbnailDragHandle;
 		private readonly Dictionary<IntPtr, int> _windowAccountIds;
+		// Windows whose launch character id has already been handed to the portrait service.
+		private readonly HashSet<IntPtr> _launchCharacterIdBound;
 		private DispatcherTimer _autoSettingsSyncDelayTimer;
 		private readonly DispatcherTimer _clickThroughPollTimer;
 		private const int AUTO_SETTINGS_SYNC_STARTUP_DELAY_MS = 2000;
@@ -81,7 +84,7 @@ namespace EveFPreview.Services
 
 		public Action<bool, string> AutoSettingsSyncStatusReported { get; set; }
 
-		public ThumbnailManager(IMediator mediator, IThumbnailConfiguration configuration, IProcessMonitor processMonitor, IWindowManager windowManager, IThumbnailViewFactory factory, IEveLocationService locationService, ICharacterIndicatorManager characterIndicatorManager)
+		public ThumbnailManager(IMediator mediator, IThumbnailConfiguration configuration, IProcessMonitor processMonitor, IWindowManager windowManager, IThumbnailViewFactory factory, IEveLocationService locationService, ICharacterIndicatorManager characterIndicatorManager, ICharacterPortraitService characterPortraitService)
 		{
 			this._mediator = mediator;
 			this._processMonitor = processMonitor;
@@ -90,6 +93,7 @@ namespace EveFPreview.Services
 			this._thumbnailViewFactory = factory;
 			this._locationService = locationService;
 			this._characterIndicatorManager = characterIndicatorManager;
+			this._characterPortraitService = characterPortraitService;
 
 			this._activeClient = (IntPtr.Zero, ThumbnailManager.DEFAULT_CLIENT_TITLE);
 
@@ -102,6 +106,7 @@ namespace EveFPreview.Services
 
 			this._thumbnailViews = new Dictionary<IntPtr, IThumbnailView>();
 			this._windowAccountIds = new Dictionary<IntPtr, int>();
+			this._launchCharacterIdBound = new HashSet<IntPtr>();
 
 			//  DispatcherTimer setup
 			this._thumbnailUpdateTimer = new DispatcherTimer();
@@ -1056,7 +1061,7 @@ namespace EveFPreview.Services
 											? this.ResolveThumbnailLocation(view, this._activeClient.Title, this.GetSpawnLocation(this._configuration.NewPreviewSpawnLocation))
 											: this.GetSpawnLocation(this._configuration.LoginThumbnailLocation);
 
-				this.UpdateClientMetadata(process.Handle);
+				this.UpdateClientMetadata(process.Handle, process.Title);
 
 				this._thumbnailViews.Add(view.Id, view);
 
@@ -1116,12 +1121,14 @@ namespace EveFPreview.Services
 					this.ApplyCaptionBar(view);
 				}
 
-				this.UpdateClientMetadata(process.Handle);
+				this.UpdateClientMetadata(process.Handle, process.Title);
 			}
 
 			foreach (IProcessInfo process in removedProcesses)
 			{
 				this._windowAccountIds.Remove(process.Handle);
+				this._launchCharacterIdBound.Remove(process.Handle);
+				EveClientMetadataReader.Forget(process.Handle);
 
 				IThumbnailView view = this._thumbnailViews[process.Handle];
 
@@ -2236,11 +2243,22 @@ namespace EveFPreview.Services
 			this.EnableViewEvents();
 		}
 
-		private void UpdateClientMetadata(IntPtr handle)
+		private void UpdateClientMetadata(IntPtr handle, string title)
 		{
 			if (!EveClientMetadataReader.TryReadMetadata(handle, out int accountId, out int characterId))
 			{
 				return;
+			}
+
+			// The command line names the character the client was launched into and never changes, so
+			// it can only describe the first character this window shows: after a log-off to character
+			// selection it may be someone else. The portrait service still checks the id against the
+			// name with ESI, since this app may also have started after the character was switched.
+			if (characterId > 0
+				&& title != ThumbnailManager.DEFAULT_CLIENT_TITLE
+				&& this._launchCharacterIdBound.Add(handle))
+			{
+				this._characterPortraitService.SetLaunchCharacterId(title, characterId);
 			}
 
 			if (accountId > 0)
