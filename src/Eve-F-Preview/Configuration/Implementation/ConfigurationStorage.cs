@@ -11,8 +11,19 @@ namespace EveFPreview.Configuration.Implementation
 		private const string LEGACY_CONFIGURATION_FILE_NAME = "EVE-O-Preview.json";
 		private const string BACKUP_SUFFIX = ".bak";
 
+		private static readonly JsonSerializerSettings LoadSettings = new JsonSerializerSettings()
+		{
+			ObjectCreationHandling = ObjectCreationHandling.Replace
+		};
+
+		// Every saved setting at its default value; applied before a file so settings the file
+		// doesn't mention are reset instead of keeping the previously loaded profile's values.
+		private static readonly Lazy<string> DefaultSettingsJson =
+			new Lazy<string>(() => JsonConvert.SerializeObject(new ThumbnailConfiguration()));
+
 		private readonly IAppConfig _appConfig;
 		private readonly IThumbnailConfiguration _thumbnailConfiguration;
+		private readonly object _saveSync = new object();
 
 		public ConfigurationStorage(IAppConfig appConfig, IThumbnailConfiguration thumbnailConfiguration)
 		{
@@ -29,11 +40,6 @@ namespace EveFPreview.Configuration.Implementation
 				return;
 			}
 
-			JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings()
-			{
-				ObjectCreationHandling = ObjectCreationHandling.Replace
-			};
-
 			try
 			{
 				string rawData = File.ReadAllText(filename);
@@ -42,7 +48,7 @@ namespace EveFPreview.Configuration.Implementation
 					throw new JsonSerializationException("Configuration file is empty.");
 				}
 
-				JsonConvert.PopulateObject(rawData, this._thumbnailConfiguration, jsonSerializerSettings);
+				this.PopulateFrom(rawData);
 			}
 			catch (JsonException)
 			{
@@ -56,13 +62,40 @@ namespace EveFPreview.Configuration.Implementation
 					throw;
 				}
 
-				JsonConvert.PopulateObject(backupData, this._thumbnailConfiguration, jsonSerializerSettings);
+				this.PopulateFrom(backupData);
 			}
 
 			this._thumbnailConfiguration.ApplyRestrictions();
 		}
 
+		/// <summary>
+		/// Resets every saved setting to its default, then applies <paramref name="rawData"/> on top.
+		/// Loading onto the live object alone would let a profile that omits a setting inherit the
+		/// value from whichever profile was loaded before it.
+		/// </summary>
+		private void PopulateFrom(string rawData)
+		{
+			JsonConvert.PopulateObject(ConfigurationStorage.DefaultSettingsJson.Value, this._thumbnailConfiguration, ConfigurationStorage.LoadSettings);
+			JsonConvert.PopulateObject(rawData, this._thumbnailConfiguration, ConfigurationStorage.LoadSettings);
+		}
+
 		public void Save()
+		{
+			// Settings are changed on the UI thread, so serialize them there too: serializing from
+			// another thread while the UI edits a dictionary can throw (or write a torn snapshot).
+			if (UiThread.IsRequired)
+			{
+				UiThread.Run(this.Save);
+				return;
+			}
+
+			lock (this._saveSync)
+			{
+				this.SaveCore();
+			}
+		}
+
+		private void SaveCore()
 		{
 			string rawData = JsonConvert.SerializeObject(this._thumbnailConfiguration, Formatting.Indented);
 			string filename = this.GetSaveConfigFileName();
@@ -129,11 +162,23 @@ namespace EveFPreview.Configuration.Implementation
 
 			this.Save();
 
+			string previousConfigFileName = this._appConfig.ConfigFileName;
 			this._appConfig.ConfigFileName = Path.IsPathRooted(pathOrFileName)
 				? pathOrFileName
 				: Path.GetFileName(pathOrFileName);
 
-			this.Load();
+			try
+			{
+				this.Load();
+			}
+			catch
+			{
+				// Unreadable profile: go back to the one that was just saved, rather than stay pointed
+				// at the broken file with half-loaded settings (the next save would overwrite it).
+				this._appConfig.ConfigFileName = previousConfigFileName;
+				this.Load();
+				throw;
+			}
 		}
 
 		public void SaveAs(string pathOrFileName)

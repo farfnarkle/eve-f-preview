@@ -369,6 +369,7 @@ namespace EveFPreview.Services
 					&& _options.ChannelKeysToStrip != null
 					&& _options.ChannelKeysToStrip.Count > 0;
 
+				bool synced;
 				if (_options.Mode == EveSettingsSyncMode.Copy)
 				{
 					if (IsSymlink(target))
@@ -377,13 +378,19 @@ namespace EveFPreview.Services
 						continue;
 					}
 
-					BackupFile(target, report, _options.DryRun, EveSettingsBackupMode.Automatic);
+					// Never overwrite a destination we couldn't back up first.
+					if (!BackupFile(target, report, _options.DryRun, EveSettingsBackupMode.Automatic))
+					{
+						report.Warnings.Add("Skipped " + name + " in " + profileName + ": its backup failed, so it was left unchanged.");
+						continue;
+					}
+
 					if (isChar)
 					{
 						string actionLabel = stripChannels
 							? "copy+strip-channels " + Path.GetFileName(source) + " -> " + name
 							: "copy+sanitize " + Path.GetFileName(source) + " -> " + name;
-						Do(report, actionLabel, () =>
+						synced = Do(report, actionLabel, () =>
 						{
 							byte[] blob = EveChatChannelTools.PrepareCoreCharCopy(
 								source,
@@ -417,7 +424,7 @@ namespace EveFPreview.Services
 						report.Warnings.Add("Source character name unknown; edit history in " + Path.GetFileName(source) + " not sanitized.");
 					}
 
-					Do(report, "copy+sanitize " + Path.GetFileName(source) + " -> " + name, () =>
+					synced = Do(report, "copy+sanitize " + Path.GetFileName(source) + " -> " + name, () =>
 					{
 						byte[] blob = EveChatChannelTools.PrepareCoreUserCopy(
 							source,
@@ -441,7 +448,7 @@ namespace EveFPreview.Services
 				else
 				{
 					report.Warnings.Add("Source character name unknown; copying " + Path.GetFileName(source) + " raw (edit history not sanitized).");
-					Do(report, "copy " + Path.GetFileName(source) + " -> " + name,
+					synced = Do(report, "copy " + Path.GetFileName(source) + " -> " + name,
 						() => File.Copy(source, target, true));
 				}
 			}
@@ -449,24 +456,25 @@ namespace EveFPreview.Services
 			{
 				if (IsSymlink(target))
 					{
-						Do(report, "relink " + name + " -> " + Path.GetFileName(source), () =>
-						{
-							File.Delete(target);
-							CreateSymlink(target, source);
-						});
+						synced = Do(report, "relink " + name + " -> " + Path.GetFileName(source),
+							() => ReplaceWithSymlink(target, source));
+					}
+					else if (!BackupFile(target, report, _options.DryRun, EveSettingsBackupMode.Automatic))
+					{
+						report.Warnings.Add("Skipped " + name + " in " + profileName + ": its backup failed, so it was left unchanged.");
+						continue;
 					}
 					else
 					{
-						BackupFile(target, report, _options.DryRun, EveSettingsBackupMode.Automatic);
-						Do(report, "link " + name + " -> " + Path.GetFileName(source), () =>
-						{
-							File.Delete(target);
-							CreateSymlink(target, source);
-						});
+						synced = Do(report, "link " + name + " -> " + Path.GetFileName(source),
+							() => ReplaceWithSymlink(target, source));
 					}
 				}
 
-				report.FilesSynced++;
+				if (synced)
+				{
+					report.FilesSynced++;
+				}
 			}
 		}
 
@@ -562,21 +570,33 @@ namespace EveFPreview.Services
 			return count;
 		}
 
-		private static void BackupFile(string file, EveSettingsSyncReport report, bool dryRun, EveSettingsBackupMode mode)
+		/// <summary>Copies <paramref name="file"/> to a new backup. Returns false if the copy failed.</summary>
+		private static bool BackupFile(string file, EveSettingsSyncReport report, bool dryRun, EveSettingsBackupMode mode)
 		{
 			string dir = Path.GetDirectoryName(file);
 			string stem = Path.GetFileNameWithoutExtension(file);
 
 			if (mode == EveSettingsBackupMode.Automatic)
 			{
-				string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-				string backupName = stem + AutomaticBackupMarker + "_" + stamp + ".dat";
+				// Two backups of the same file within one second would share a name; add a counter
+				// rather than fail (a failed backup now blocks the sync of that file).
+				string baseName = stem + AutomaticBackupMarker + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
+				string backupName = baseName + ".dat";
+				for (int n = 2; File.Exists(Path.Combine(dir, backupName)); n++)
+				{
+					backupName = baseName + "_" + n + ".dat";
+				}
+
 				string backup = Path.Combine(dir, backupName);
-				Do(report, "auto-backup " + Path.GetFileName(file) + " -> " + backupName,
-					() => File.Copy(file, backup, overwrite: false), dryRun);
+				if (!Do(report, "auto-backup " + Path.GetFileName(file) + " -> " + backupName,
+					() => File.Copy(file, backup, overwrite: false), dryRun))
+				{
+					return false;
+				}
+
 				report.FilesBackedUp++;
 				PruneAutomaticBackups(dir, stem, report, dryRun);
-				return;
+				return true;
 			}
 
 			for (int n = 1; ; n++)
@@ -587,10 +607,14 @@ namespace EveFPreview.Services
 					continue;
 				}
 
-				Do(report, "backup " + Path.GetFileName(file) + " -> " + Path.GetFileName(backup),
-					() => File.Copy(file, backup), dryRun);
+				if (!Do(report, "backup " + Path.GetFileName(file) + " -> " + Path.GetFileName(backup),
+					() => File.Copy(file, backup), dryRun))
+				{
+					return false;
+				}
+
 				report.FilesBackedUp++;
-				return;
+				return true;
 			}
 		}
 
@@ -620,27 +644,30 @@ namespace EveFPreview.Services
 			}
 		}
 
-		private void Do(EveSettingsSyncReport report, string description, Action action)
+		private bool Do(EveSettingsSyncReport report, string description, Action action)
 		{
-			Do(report, description, action, _options.DryRun);
+			return Do(report, description, action, _options.DryRun);
 		}
 
-		private static void Do(EveSettingsSyncReport report, string description, Action action, bool dryRun)
+		/// <summary>Runs <paramref name="action"/>, recording it in the report. Returns false if it failed (true for a dry run).</summary>
+		private static bool Do(EveSettingsSyncReport report, string description, Action action, bool dryRun)
 		{
 			if (dryRun)
 			{
 				report.Actions.Add("[dry] " + description);
-				return;
+				return true;
 			}
 
 			try
 			{
 				action();
 				report.Actions.Add(description);
+				return true;
 			}
 			catch (Exception ex)
 			{
 				report.Warnings.Add(description + " FAILED: " + ex.Message);
+				return false;
 			}
 		}
 
@@ -651,6 +678,44 @@ namespace EveFPreview.Services
 
 		[DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
 		private static extern bool CreateSymbolicLinkW(string lpSymlinkFileName, string lpTargetFileName, uint dwFlags);
+
+		/// <summary>
+		/// Replaces <paramref name="linkPath"/> with a symlink to <paramref name="targetPath"/>. The link
+		/// is created under a temporary name first and only then renamed over the file, so when link
+		/// creation fails (no admin rights / Developer Mode) the original file is left untouched.
+		/// </summary>
+		private static void ReplaceWithSymlink(string linkPath, string targetPath)
+		{
+			string tempLink = linkPath + ".sync_link_tmp";
+			if (File.Exists(tempLink) || IsSymlinkEntry(tempLink))
+			{
+				File.Delete(tempLink); // leftover from an interrupted run; deletes the link itself, not its target
+			}
+
+			CreateSymlink(tempLink, targetPath);
+			try
+			{
+				// Renames the link entry itself (MoveFileEx doesn't follow a symlink source), replacing the file.
+				File.Move(tempLink, linkPath, overwrite: true);
+			}
+			catch
+			{
+				File.Delete(tempLink);
+				throw;
+			}
+		}
+
+		private static bool IsSymlinkEntry(string path)
+		{
+			try
+			{
+				return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+			}
+			catch (IOException)
+			{
+				return false;
+			}
+		}
 
 		private static void CreateSymlink(string linkPath, string targetPath)
 		{

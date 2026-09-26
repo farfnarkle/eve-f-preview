@@ -213,9 +213,35 @@ namespace EveFPreview.Services
 		}
 
 		/// <summary>
-		/// Attempts an automatic sync. Returns null if skipped; otherwise the sync report.
+		/// Everything an automatic sync needs, copied out of the settings so the file work can run on a
+		/// background thread without touching the (UI-thread-owned) configuration.
 		/// </summary>
-		public static EveSettingsSyncReport TryRun(IThumbnailConfiguration configuration, string reason, out string skipReason)
+		public sealed class AutoSyncPlan
+		{
+			internal string ProfileName;
+			internal long SourceCharacterId;
+			internal long SourceUserId;
+			internal string SourceCharacterName;
+			internal bool PreserveModuleState;
+			internal readonly List<AutoSyncDestination> Destinations = new List<AutoSyncDestination>();
+		}
+
+		internal sealed class AutoSyncDestination
+		{
+			internal long CharacterId;
+			/// <summary>The destination's account, when its core_user should be synced in this run; otherwise 0.</summary>
+			internal long AccountIdToSync;
+			/// <summary>Channels to keep (strip every other player channel), or null to use <see cref="LegacyChannelKeysToStrip"/>.</summary>
+			internal List<string> ChannelKeysToKeep;
+			internal List<string> LegacyChannelKeysToStrip;
+		}
+
+		/// <summary>
+		/// UI thread: checks the auto-sync settings, drops destinations that no longer exist (this
+		/// changes the settings - the caller saves them), and snapshots what the sync needs.
+		/// Returns null with <paramref name="skipReason"/> set when there is nothing to run.
+		/// </summary>
+		public static AutoSyncPlan TryPrepare(IThumbnailConfiguration configuration, out string skipReason)
 		{
 			skipReason = null;
 
@@ -231,12 +257,6 @@ namespace EveFPreview.Services
 				return null;
 			}
 
-			if (EveSettingsSync.IsEveRunning())
-			{
-				skipReason = "EVE is still running; auto-sync skipped.";
-				return null;
-			}
-
 			PruneMissingDestinations(configuration, configuration.AutoSettingsSyncProfileName);
 			if (configuration.AutoSettingsSyncDestinationCharacterIds.Count == 0)
 			{
@@ -244,30 +264,78 @@ namespace EveFPreview.Services
 				return null;
 			}
 
-			// Each destination can keep a different set of channels, so sync one destination per run
-			// instead of batching them all under one shared ChannelKeysToStrip. Several characters
-			// can share the same EVE account, though - only sync each account's core_user once per
-			// run, or a repeat pass re-backs-up the same file within the same second and collides
-			// with the first pass's timestamped backup name.
-			string sourceName = ResolveSourceCharacterName(configuration);
-			var report = new EveSettingsSyncReport();
+			var plan = new AutoSyncPlan
+			{
+				ProfileName = configuration.AutoSettingsSyncProfileName,
+				SourceCharacterId = configuration.AutoSettingsSyncSourceCharacterId,
+				SourceUserId = configuration.AutoSettingsSyncSourceUserId,
+				SourceCharacterName = ResolveSourceCharacterName(configuration),
+				PreserveModuleState = configuration.PreserveShipModuleStateOnSync
+			};
+
+			// Several characters can share the same EVE account - only sync each account's core_user
+			// once per run (a repeat pass would back up and rewrite the same file again).
 			var accountsAlreadySynced = new HashSet<long>();
+			bool hasKeep = configuration.AutoSettingsSyncChannelKeysToKeep != null
+				&& configuration.AutoSettingsSyncChannelKeysToKeep.Count > 0;
+			bool hasLegacyStrip = configuration.AutoSettingsSyncChannelKeysToStrip != null
+				&& configuration.AutoSettingsSyncChannelKeysToStrip.Count > 0;
 
 			foreach (long destinationCharacterId in configuration.AutoSettingsSyncDestinationCharacterIds)
 			{
 				configuration.TryGetAccountIdForCharacter((int)destinationCharacterId, out int destinationAccountId);
-				bool syncAccountThisPass = destinationAccountId > 0 && accountsAlreadySynced.Add(destinationAccountId);
+				bool hasDestinationOverride = configuration.AutoSettingsSyncChannelKeysToKeepByDestination != null
+					&& configuration.AutoSettingsSyncChannelKeysToKeepByDestination.ContainsKey(destinationCharacterId.ToString());
+
+				// Same rule as ResolveChannelKeysToStripForDestination: prefer the keep model; an empty
+				// keep list with no legacy strip list means "strip all player channels".
+				bool useKeepModel = hasKeep || hasDestinationOverride || !hasLegacyStrip;
+
+				plan.Destinations.Add(new AutoSyncDestination
+				{
+					CharacterId = destinationCharacterId,
+					AccountIdToSync = destinationAccountId > 0 && accountsAlreadySynced.Add(destinationAccountId) ? destinationAccountId : 0,
+					ChannelKeysToKeep = useKeepModel ? GetChannelKeysToKeepForDestination(configuration, destinationCharacterId).ToList() : null,
+					LegacyChannelKeysToStrip = useKeepModel ? null : configuration.AutoSettingsSyncChannelKeysToStrip.ToList()
+				});
+			}
+
+			return plan;
+		}
+
+		/// <summary>
+		/// Background thread: runs a prepared sync against the EVE settings files. Returns null with
+		/// <paramref name="skipReason"/> set when EVE is running; otherwise the sync report.
+		/// </summary>
+		public static EveSettingsSyncReport Execute(AutoSyncPlan plan, string reason, out string skipReason)
+		{
+			skipReason = null;
+
+			if (EveSettingsSync.IsEveRunning())
+			{
+				skipReason = "EVE is still running; auto-sync skipped.";
+				return null;
+			}
+
+			// Each destination can keep a different set of channels, so sync one destination per run
+			// instead of batching them all under one shared ChannelKeysToStrip.
+			var report = new EveSettingsSyncReport();
+			foreach (AutoSyncDestination destination in plan.Destinations)
+			{
+				IList<string> channelKeysToStrip = destination.ChannelKeysToKeep != null
+					? EveChatChannelTools.ResolveKeysToStrip(plan.SourceCharacterId, destination.ChannelKeysToKeep, plan.ProfileName)
+					: destination.LegacyChannelKeysToStrip;
 
 				var options = new EveSettingsSyncOptions
 				{
-					SourceCharacterId = configuration.AutoSettingsSyncSourceCharacterId,
-					SourceUserId = configuration.AutoSettingsSyncSourceUserId,
-					SourceCharacterName = sourceName,
-					DestinationCharacterIds = new List<long> { destinationCharacterId },
-					DestinationUserIds = syncAccountThisPass ? new List<long> { destinationAccountId } : new List<long>(),
-					ChannelKeysToStrip = ResolveChannelKeysToStripForDestination(configuration, destinationCharacterId),
-					ProfileName = configuration.AutoSettingsSyncProfileName,
-					PreserveModuleState = configuration.PreserveShipModuleStateOnSync,
+					SourceCharacterId = plan.SourceCharacterId,
+					SourceUserId = plan.SourceUserId,
+					SourceCharacterName = plan.SourceCharacterName,
+					DestinationCharacterIds = new List<long> { destination.CharacterId },
+					DestinationUserIds = destination.AccountIdToSync > 0 ? new List<long> { destination.AccountIdToSync } : new List<long>(),
+					ChannelKeysToStrip = channelKeysToStrip,
+					ProfileName = plan.ProfileName,
+					PreserveModuleState = plan.PreserveModuleState,
 					Mode = EveSettingsSyncMode.Copy
 				};
 

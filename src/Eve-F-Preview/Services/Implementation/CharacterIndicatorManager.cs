@@ -18,13 +18,15 @@ namespace EveFPreview.Services
 		private const int HideDelayMilliseconds = 350;
 
 		private readonly IThumbnailConfiguration _configuration;
+		private readonly IConfigurationStorage _configurationStorage;
 		private CharacterIndicatorWindow _form;
 		private Action<IntPtr> _cellClicked;
 		private Action<IntPtr> _cellShiftClicked;
 		private DateTime? _focusLostAtUtc;
 
-		public CharacterIndicatorManager(IThumbnailConfiguration configuration)
+		public CharacterIndicatorManager(IThumbnailConfiguration configuration, IConfigurationStorage configurationStorage)
 		{
+			this._configurationStorage = configurationStorage;
 			this._configuration = configuration;
 		}
 
@@ -130,7 +132,11 @@ namespace EveFPreview.Services
 			}
 
 			this._form = new CharacterIndicatorWindow();
-			this._form.LocationDragged = location => this._configuration.CharacterIndicatorLocation = location;
+			this._form.LocationDragged = location =>
+			{
+				this._configuration.CharacterIndicatorLocation = location;
+				this._configurationStorage.Save();
+			};
 			this._form.CellClicked = this._cellClicked;
 			this._form.CellShiftClicked = this._cellShiftClicked;
 

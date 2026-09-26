@@ -27,6 +27,37 @@ namespace EveFPreview.Services
 		public override int GetHashCode() => this.Name.GetHashCode();
 	}
 
+	/// <summary>
+	/// A byte-string value that is not valid UTF-8 (binary data). Kept as raw bytes together with
+	/// the opcode it was read with, so it is written back byte-for-byte instead of being decoded
+	/// to text (which would replace the invalid bytes with U+FFFD and corrupt it).
+	/// </summary>
+	public sealed class EveBlueBytes
+	{
+		public EveBlueBytes(byte opcode, byte[] bytes)
+		{
+			this.Opcode = opcode;
+			this.Bytes = bytes ?? Array.Empty<byte>();
+		}
+
+		public byte Opcode { get; }
+
+		public byte[] Bytes { get; }
+
+		public override bool Equals(object obj) =>
+			obj is EveBlueBytes other && this.Opcode == other.Opcode && this.Bytes.AsSpan().SequenceEqual(other.Bytes);
+
+		public override int GetHashCode()
+		{
+			var hash = new HashCode();
+			hash.Add(this.Opcode);
+			hash.AddBytes(this.Bytes);
+			return hash.ToHashCode();
+		}
+
+		public override string ToString() => Convert.ToHexString(this.Bytes);
+	}
+
 	public sealed class EveBlueObj
 	{
 		public string Kind; // "instance" | "reduce" | "newobj"
@@ -87,6 +118,9 @@ namespace EveFPreview.Services
 		};
 
 		private static readonly object MarkSentinel = new object();
+
+		// Throws on invalid bytes instead of silently substituting U+FFFD, so binary data is detected.
+		private static readonly Encoding StrictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
 		// From reverence strings.py (BSD) — STRINGR table; encoder never emits STRINGR.
 		private static readonly string[] StringTable = EveBlueStringTable.Entries;
@@ -234,18 +268,18 @@ namespace EveFPreview.Services
 						return this.Keep(string.Empty, slot);
 					case T_STRING1:
 						_pos += 1;
-						return this.Keep(BytesToStr(_data, p, 1), slot);
+						return this.Keep(BytesToStr(_data, p, 1, t), slot);
 					case T_STRING:
 						{
 							int n = _data[p];
 							_pos += 1 + n;
-							return this.Keep(BytesToStr(_data, p + 1, n), slot);
+							return this.Keep(BytesToStr(_data, p + 1, n, t), slot);
 						}
 					case T_STRINGL:
 					case T_BUFFER:
 					case T_BLUE:
 						_pos += length;
-						return this.Keep(BytesToStr(_data, p, length), slot);
+						return this.Keep(BytesToStr(_data, p, length, t), slot);
 					case T_UNICODE0:
 						return this.Keep(string.Empty, slot);
 					case T_UNICODE1:
@@ -394,6 +428,10 @@ namespace EveFPreview.Services
 				byte[] bytes = Encoding.Latin1.GetBytes(g.Name);
 				outParts.Add(Concat(new byte[] { T_GLOBAL }, EncLen(bytes.Length), bytes));
 			}
+			else if (o is EveBlueBytes blueBytes)
+			{
+				EncodeRawBytes(blueBytes, outParts);
+			}
 			else if (o is byte[] rawBytes)
 			{
 				outParts.Add(Concat(new byte[] { T_BUFFER }, EncLen(rawBytes.Length), rawBytes));
@@ -528,6 +566,28 @@ namespace EveFPreview.Services
 			}
 		}
 
+		/// <summary>Writes binary byte-string data back with the opcode (and length format) it was read with.</summary>
+		private static void EncodeRawBytes(EveBlueBytes value, List<byte[]> outParts)
+		{
+			byte[] bytes = value.Bytes;
+			switch (value.Opcode)
+			{
+				case T_STRING1 when bytes.Length == 1:
+					outParts.Add(new byte[] { T_STRING1, bytes[0] });
+					break;
+				case T_STRING when bytes.Length <= byte.MaxValue:
+					outParts.Add(Concat(new byte[] { T_STRING, (byte)bytes.Length }, bytes));
+					break;
+				case T_STRINGL:
+				case T_BLUE:
+					outParts.Add(Concat(new byte[] { value.Opcode }, EncLen(bytes.Length), bytes));
+					break;
+				default:
+					outParts.Add(Concat(new byte[] { T_BUFFER }, EncLen(bytes.Length), bytes));
+					break;
+			}
+		}
+
 		private static void EncodeInt(long o, List<byte[]> outParts)
 		{
 			if (o == -1)
@@ -621,17 +681,21 @@ namespace EveFPreview.Services
 			return result;
 		}
 
-		private static object BytesToStr(byte[] data, int offset, int length)
+		/// <summary>
+		/// Text if the bytes are valid UTF-8 (written back as UTF8), otherwise the raw bytes with their
+		/// original opcode so binary values survive a load/save round trip unchanged.
+		/// </summary>
+		private static object BytesToStr(byte[] data, int offset, int length, byte opcode)
 		{
 			try
 			{
-				return Encoding.UTF8.GetString(data, offset, length);
+				return StrictUtf8.GetString(data, offset, length);
 			}
-			catch
+			catch (DecoderFallbackException)
 			{
 				var copy = new byte[length];
 				Buffer.BlockCopy(data, offset, copy, 0, length);
-				return copy;
+				return new EveBlueBytes(opcode, copy);
 			}
 		}
 

@@ -36,8 +36,12 @@ namespace EveFPreview
 		{
 			try
 			{
-				String exceptionMessage = exception.ToString();
-				File.WriteAllText(ExceptionHandler.EXCEPTION_DUMP_FILE_NAME, exceptionMessage);
+				// Next to the exe (not the working directory, which depends on how the app was
+				// started), and appended with a timestamp so an earlier crash isn't overwritten.
+				string logPath = Path.Combine(AppContext.BaseDirectory, ExceptionHandler.EXCEPTION_DUMP_FILE_NAME);
+				string version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "?";
+				File.AppendAllText(logPath,
+					$"==== {DateTime.Now:yyyy-MM-dd HH:mm:ss} (EVE-F-Preview {version}) ===={Environment.NewLine}{exception}{Environment.NewLine}{Environment.NewLine}");
 
 				MessageBox.Show(ExceptionHandler.EXCEPTION_MESSAGE, @"EVE-F-Preview", MessageBoxButton.OK, MessageBoxImage.Error);
 			}

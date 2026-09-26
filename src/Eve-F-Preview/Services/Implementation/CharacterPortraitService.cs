@@ -24,6 +24,7 @@ namespace EveFPreview.Services.Implementation
 		private const string PortraitLogFileName = "portrait-fetch.log";
 		private const string UserAgent = "EVE-F-Preview/1.0 (character portrait cache; fork of eve-o-preview)";
 		private const int MaxParallelDownloads = 6;
+		private const long MaxLogFileBytes = 1024 * 1024;
 
 		private static readonly HttpClient SharedHttpClient = CreateHttpClient();
 
@@ -31,6 +32,7 @@ namespace EveFPreview.Services.Implementation
 		private readonly IConfigurationStorage _configurationStorage;
 		private readonly IMediator _mediator;
 		private readonly object _syncRoot = new object();
+		private readonly object _logSync = new object();
 		private readonly SemaphoreSlim _refreshGate = new SemaphoreSlim(1, 1);
 		// Written on the UI thread as clients are detected, read by the download tasks.
 		private readonly ConcurrentDictionary<string, int> _launchCharacterIds =
@@ -93,19 +95,27 @@ namespace EveFPreview.Services.Implementation
 					: $"Downloading {titles.Count} portrait(s).");
 
 				using var throttler = new SemaphoreSlim(MaxParallelDownloads, MaxParallelDownloads);
-				var downloadTasks = titles.Select(title => this.DownloadPortraitWithThrottleAsync(
+				var downloadTasks = titles.Select(async title => (Title: title, Path: await this.DownloadPortraitWithThrottleAsync(
 					throttler,
 					title,
 					thumbsDirectory,
 					forceRedownload,
-					cancellationToken));
+					cancellationToken).ConfigureAwait(false)));
 
-				await Task.WhenAll(downloadTasks).ConfigureAwait(false);
+				var results = await Task.WhenAll(downloadTasks).ConfigureAwait(false);
 
-				lock (this._syncRoot)
+				// The settings (and the thumbnails showing the portraits) belong to the UI thread: the
+				// refresh loop reads ClientPortraitPaths every tick and Save serializes it, so writing
+				// it from a download thread could corrupt it or break the save mid-way.
+				await UiThread.RunAsync(() =>
 				{
+					foreach (var result in results.Where(r => r.Path != null))
+					{
+						this._configuration.ClientPortraitPaths[result.Title] = result.Path;
+					}
+
 					this._configurationStorage.Save();
-				}
+				}).ConfigureAwait(false);
 
 				await this._mediator.Publish(new ThumbnailPortraitsUpdated(), cancellationToken).ConfigureAwait(false);
 
@@ -192,7 +202,7 @@ namespace EveFPreview.Services.Implementation
 			return client;
 		}
 
-		private async Task DownloadPortraitWithThrottleAsync(
+		private async Task<string> DownloadPortraitWithThrottleAsync(
 			SemaphoreSlim throttler,
 			string windowTitle,
 			string thumbsDirectory,
@@ -202,7 +212,7 @@ namespace EveFPreview.Services.Implementation
 			await throttler.WaitAsync(cancellationToken).ConfigureAwait(false);
 			try
 			{
-				await this.DownloadPortraitForClientAsync(windowTitle, thumbsDirectory, forceRedownload, cancellationToken)
+				return await this.DownloadPortraitForClientAsync(windowTitle, thumbsDirectory, forceRedownload, cancellationToken)
 					.ConfigureAwait(false);
 			}
 			finally
@@ -211,7 +221,8 @@ namespace EveFPreview.Services.Implementation
 			}
 		}
 
-		private async Task DownloadPortraitForClientAsync(
+		/// <summary>Downloads one portrait. Returns the saved file's path, or null if nothing new was saved.</summary>
+		private async Task<string> DownloadPortraitForClientAsync(
 			string windowTitle,
 			string thumbsDirectory,
 			bool forceRedownload,
@@ -220,7 +231,7 @@ namespace EveFPreview.Services.Implementation
 			if (!CharacterPortraitNaming.TryGetCharacterName(windowTitle, out string characterName))
 			{
 				this.Log($"Skipped '{windowTitle}': not a logged-in character window.");
-				return;
+				return null;
 			}
 
 			try
@@ -228,7 +239,7 @@ namespace EveFPreview.Services.Implementation
 				if (!forceRedownload && this.TryGetPortraitPath(windowTitle, out string existingPath) && File.Exists(existingPath))
 				{
 					this.Log($"Skipped '{windowTitle}': portrait already exists at {existingPath}");
-					return;
+					return null;
 				}
 
 				int? characterId = await this.TryGetVerifiedLaunchCharacterIdAsync(windowTitle, characterName, cancellationToken).ConfigureAwait(false)
@@ -236,30 +247,27 @@ namespace EveFPreview.Services.Implementation
 				if (characterId == null)
 				{
 					this.Log($"Failed '{windowTitle}': could not resolve ESI character id for '{characterName}'.");
-					return;
+					return null;
 				}
 
 				string portraitUrl = await this.GetPortraitUrlAsync(characterId.Value, cancellationToken).ConfigureAwait(false);
 				if (string.IsNullOrEmpty(portraitUrl))
 				{
 					this.Log($"Failed '{windowTitle}': ESI returned no portrait URL for id {characterId.Value}.");
-					return;
+					return null;
 				}
 
 				string destinationPath = Path.Combine(thumbsDirectory, $"{characterId.Value}.png");
 				await this.DownloadFileAsync(portraitUrl, destinationPath, cancellationToken).ConfigureAwait(false);
 
-				lock (this._syncRoot)
-				{
-					this._configuration.ClientPortraitPaths[windowTitle] = destinationPath;
-				}
-
 				this.Log($"Saved '{windowTitle}' -> {destinationPath}");
+				return destinationPath;
 			}
 			catch (Exception ex) when (ex is not OperationCanceledException)
 			{
 				this.Log($"Failed '{windowTitle}': {ex.Message}");
 				Debug.WriteLine(ex);
+				return null;
 			}
 		}
 
@@ -344,11 +352,7 @@ namespace EveFPreview.Services.Implementation
 				}
 			}
 
-			if (characters.GetArrayLength() > 0 && characters[0].TryGetProperty("id", out JsonElement fallbackId))
-			{
-				return fallbackId.GetInt32();
-			}
-
+			// No exact name match: better no portrait than someone else's.
 			return null;
 		}
 
@@ -379,19 +383,41 @@ namespace EveFPreview.Services.Implementation
 			return null;
 		}
 
+		/// <summary>
+		/// Downloads to a temporary file and only then swaps it in, so a failed or interrupted download
+		/// never deletes (or half-overwrites) the portrait that is already there.
+		/// </summary>
 		private async Task DownloadFileAsync(string url, string destinationPath, CancellationToken cancellationToken)
 		{
-			if (File.Exists(destinationPath))
+			string tempPath = destinationPath + ".download";
+			try
 			{
-				File.Delete(destinationPath);
+				using (HttpResponseMessage response = await SharedHttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false))
+				{
+					response.EnsureSuccessStatusCode();
+
+					await using Stream source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+					await using FileStream destination = File.Create(tempPath);
+					await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+				}
+
+				if (new FileInfo(tempPath).Length == 0)
+				{
+					throw new IOException("downloaded portrait was empty");
+				}
+
+				File.Move(tempPath, destinationPath, overwrite: true);
 			}
-
-			using HttpResponseMessage response = await SharedHttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-			response.EnsureSuccessStatusCode();
-
-			await using Stream source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-			await using FileStream destination = File.Create(destinationPath);
-			await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+			finally
+			{
+				try
+				{
+					File.Delete(tempPath); // no-op after a successful move
+				}
+				catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+				{
+				}
+			}
 		}
 
 		private string EnsureThumbsDirectory()
@@ -468,11 +494,21 @@ namespace EveFPreview.Services.Implementation
 			try
 			{
 				string logPath = Path.Combine(this.EnsureThumbsDirectory(), PortraitLogFileName);
-				File.AppendAllText(logPath, line + Environment.NewLine);
+				lock (this._logSync)
+				{
+					// Keep one previous log instead of growing forever.
+					var info = new FileInfo(logPath);
+					if (info.Exists && info.Length > MaxLogFileBytes)
+					{
+						File.Move(logPath, logPath + ".old", overwrite: true);
+					}
+
+					File.AppendAllText(logPath, line + Environment.NewLine);
+				}
 			}
-			catch (IOException)
+			catch (Exception)
 			{
-				// Ignore log write failures.
+				// Logging must never break a download (it is also called from inside catch blocks).
 			}
 		}
 	}

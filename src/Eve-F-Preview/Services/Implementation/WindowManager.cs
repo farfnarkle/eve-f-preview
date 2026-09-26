@@ -65,7 +65,7 @@ namespace EveFPreview.Services.Implementation
 		{
 			try
 			{
-				System.IO.File.AppendAllText(EXCEPTION_DUMP_FILE_NAME, message + Environment.NewLine);
+				System.IO.File.AppendAllText(Path.Combine(AppContext.BaseDirectory, EXCEPTION_DUMP_FILE_NAME), message + Environment.NewLine);
 			}
 			catch (Exception ex)
 			{

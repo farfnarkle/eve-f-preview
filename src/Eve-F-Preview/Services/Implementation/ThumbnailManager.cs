@@ -285,7 +285,9 @@ namespace EveFPreview.Services
 				int order = 0;
 				foreach( var x in _thumbnailViews )
 				{
-					_cycleOrder.Add(x.Value.Title, order++);
+					// Several clients can share a title (every login screen is "EVE"). One entry per
+					// title is enough: the login-screen branch below walks all windows with that title.
+					_cycleOrder.TryAdd(x.Value.Title, order++);
 				}
 			}
 
@@ -934,6 +936,7 @@ namespace EveFPreview.Services
 				this.RegisterAllHotkeys();
 			}
 
+			this._thumbnailUpdateTimer.Interval = TimeSpan.FromMilliseconds(this._configuration.ThumbnailRefreshPeriod);
 			this._thumbnailUpdateTimer.Start();
 			this._clickThroughPollTimer.Start();
 			this.AttachForegroundChangeHook();
@@ -963,6 +966,14 @@ namespace EveFPreview.Services
 
 		private void ThumbnailUpdateTimerTick(object sender, EventArgs e)
 		{
+			// The timer is created before the config is loaded, and a profile switch can change the
+			// period too - so pick up the configured value here rather than only at construction.
+			TimeSpan refreshPeriod = TimeSpan.FromMilliseconds(this._configuration.ThumbnailRefreshPeriod);
+			if (this._thumbnailUpdateTimer.Interval != refreshPeriod)
+			{
+				this._thumbnailUpdateTimer.Interval = refreshPeriod;
+			}
+
 			this.UpdateThumbnailsList();
 			this.RefreshThumbnails();
 			this.UpdateCycleHotkeyRegistration();
@@ -1000,11 +1011,28 @@ namespace EveFPreview.Services
 			this._characterIndicatorManager.UpdateLayout(indicatorRows, this.IsForegroundATrackedEveClientWindow());
 		}
 
-		private void AutoSettingsSyncDelayTimer_Tick(object sender, EventArgs e)
+		private async void AutoSettingsSyncDelayTimer_Tick(object sender, EventArgs e)
 		{
 			this._autoSettingsSyncDelayTimer.Stop();
-			EveSettingsSyncReport report = EveAutoSettingsSyncRunner.TryRun(
-				this._configuration, "startup", out string skipReason);
+
+			EveSettingsSyncReport report;
+			string skipReason;
+			try
+			{
+				// Settings checks (and pruning missing destinations) on the UI thread, which owns the
+				// settings; the file parsing and copying on a background thread so the UI doesn't freeze.
+				EveAutoSettingsSyncRunner.AutoSyncPlan plan = EveAutoSettingsSyncRunner.TryPrepare(this._configuration, out skipReason);
+				await this._mediator.Send(new SaveConfiguration()); // pruning may have changed the settings
+
+				report = plan == null
+					? null
+					: await System.Threading.Tasks.Task.Run(() => EveAutoSettingsSyncRunner.Execute(plan, "startup", out skipReason));
+			}
+			catch (Exception ex)
+			{
+				report = null;
+				skipReason = ex.Message;
+			}
 
 			if (report == null)
 			{
@@ -1039,13 +1067,11 @@ namespace EveFPreview.Services
 
 			foreach (IProcessInfo process in addedProcesses)
 			{
-				Size initialSize = this._configuration.ThumbnailSize;
-				if (this._configuration.PerClientThumbnailSize.Any(x => x.Key == process.Title))
-				{
-					initialSize = this._configuration.PerClientThumbnailSize[process.Title];
-				}
+				Size initialSize = this._configuration.PerClientThumbnailSize.TryGetValue(process.Title, out Size perClientSize)
+					? perClientSize
+					: this._configuration.ThumbnailSize;
 
-				IThumbnailView view = this._thumbnailViewFactory.Create(process.Handle, process.Title, this._configuration.ThumbnailSize);
+				IThumbnailView view = this._thumbnailViewFactory.Create(process.Handle, process.Title, initialSize);
 				view.IsOverlayEnabled = this._configuration.ShowThumbnailOverlays;
 				view.IsExcludedFromCycleGroup = this._configuration.CycleGroupExclusions.TryGetValue(process.Title, out bool isExcluded) && isExcluded;
 				// Title (and its indicator draw) was already set by the factory before we knew the restored exclusion state above.
@@ -1943,6 +1969,7 @@ namespace EveFPreview.Services
 			view.ThumbnailLocation = new Point(x + deltaX, y + deltaY);
 			this.ApplyAccountGroupedLocation(view);
 			this.PersistThumbnailLocation(view);
+			this.RaiseThumbnailLocationUpdatedNotification(view.Title);
 		}
 
 		private void ConsiderSnapDelta(int delta, ref int chosenDelta, ref int bestDistance, int threshold)
@@ -2049,6 +2076,8 @@ namespace EveFPreview.Services
 				return;
 			}
 
+			bool changed = false;
+
 			foreach (KeyValuePair<IntPtr, IThumbnailView> entry in this._thumbnailViews)
 			{
 				IThumbnailView view = entry.Value;
@@ -2070,7 +2099,22 @@ namespace EveFPreview.Services
 					continue;
 				}
 
+				ClientLayout previous = this._configuration.GetClientLayout(view.Title);
+				if (previous != null
+					&& previous.X == position.Left && previous.Y == position.Top
+					&& previous.Width == width && previous.Height == height
+					&& previous.IsMaximized == isMaximized)
+				{
+					continue;
+				}
+
 				this._configuration.SetClientLayout(view.Title, new ClientLayout(position.Left, position.Top, width, height, isMaximized));
+				changed = true;
+			}
+
+			if (changed)
+			{
+				this._mediator.Send(new SaveConfiguration());
 			}
 		}
 
@@ -2266,9 +2310,12 @@ namespace EveFPreview.Services
 				this._windowAccountIds[handle] = accountId;
 			}
 
-			if (accountId > 0 && characterId > 0)
+			if (accountId > 0 && characterId > 0
+				&& !this._configuration.TryGetAccountIdForCharacter(characterId, out _))
 			{
+				// Newly learned (an existing mapping is never replaced) - keep it.
 				this._configuration.RecordCharacterAccount(characterId, accountId);
+				this._mediator.Send(new SaveConfiguration());
 			}
 		}
 

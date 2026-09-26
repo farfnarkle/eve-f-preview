@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -20,6 +21,19 @@ namespace EveFPreview
 			}
 
 			dispatcher.BeginInvoke(action);
+		}
+
+		/// <summary>Runs <paramref name="action"/> on the UI thread (inline if already there) and completes when it has run.</summary>
+		public static Task RunAsync(Action action)
+		{
+			Dispatcher dispatcher = UiThread.Dispatcher;
+			if (dispatcher == null || dispatcher.CheckAccess())
+			{
+				action();
+				return Task.CompletedTask;
+			}
+
+			return dispatcher.InvokeAsync(action).Task;
 		}
 
 		public static bool IsRequired

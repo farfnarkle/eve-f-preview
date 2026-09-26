@@ -674,6 +674,45 @@ namespace EveFPreview.Configuration.Implementation
 			this.UiTheme ??= string.Empty;
 			this.CycleGroupExclusions ??= new Dictionary<string, bool>();
 			this.AutoSettingsSyncChannelKeysToKeepByDestination ??= new Dictionary<string, List<string>>();
+
+			// A hand-edited or imported file can say "null" for a collection; the rest of the app
+			// assumes they always exist, so fall back to the default value instead.
+			var defaults = new Lazy<ThumbnailConfiguration>(() => new ThumbnailConfiguration());
+			this.CycleGroup1ForwardHotkeys ??= defaults.Value.CycleGroup1ForwardHotkeys;
+			this.CycleGroup1BackwardHotkeys ??= defaults.Value.CycleGroup1BackwardHotkeys;
+			this.CycleGroup1ClientsOrder ??= defaults.Value.CycleGroup1ClientsOrder;
+			this.CycleGroup2ForwardHotkeys ??= defaults.Value.CycleGroup2ForwardHotkeys;
+			this.CycleGroup2BackwardHotkeys ??= defaults.Value.CycleGroup2BackwardHotkeys;
+			this.CycleGroup2ClientsOrder ??= defaults.Value.CycleGroup2ClientsOrder;
+			this.CycleGroup3ForwardHotkeys ??= defaults.Value.CycleGroup3ForwardHotkeys;
+			this.CycleGroup3BackwardHotkeys ??= defaults.Value.CycleGroup3BackwardHotkeys;
+			this.CycleGroup3ClientsOrder ??= defaults.Value.CycleGroup3ClientsOrder;
+			this.CycleGroup4ForwardHotkeys ??= defaults.Value.CycleGroup4ForwardHotkeys;
+			this.CycleGroup4BackwardHotkeys ??= defaults.Value.CycleGroup4BackwardHotkeys;
+			this.CycleGroup4ClientsOrder ??= defaults.Value.CycleGroup4ClientsOrder;
+			this.CycleGroup5ForwardHotkeys ??= defaults.Value.CycleGroup5ForwardHotkeys;
+			this.CycleGroup5BackwardHotkeys ??= defaults.Value.CycleGroup5BackwardHotkeys;
+			this.CycleGroup5ClientsOrder ??= defaults.Value.CycleGroup5ClientsOrder;
+			this.DynamicCycleForwardHotkeys ??= defaults.Value.DynamicCycleForwardHotkeys;
+			this.DynamicCycleBackwardHotkeys ??= defaults.Value.DynamicCycleBackwardHotkeys;
+			this.PerClientPreventPreviewColor ??= defaults.Value.PerClientPreventPreviewColor;
+			this.PerClientActiveClientHighlightColor ??= defaults.Value.PerClientActiveClientHighlightColor;
+			this.PerClientPreventPreviews ??= defaults.Value.PerClientPreventPreviews;
+			this.PerClientThumbnailSize ??= defaults.Value.PerClientThumbnailSize;
+			this.PerClientZoomAnchor ??= defaults.Value.PerClientZoomAnchor;
+			this.ClientPortraitPaths ??= defaults.Value.ClientPortraitPaths;
+			this.PerClientLayout ??= defaults.Value.PerClientLayout;
+			this.FlatLayout ??= defaults.Value.FlatLayout;
+			this.AccountThumbnailLayout ??= defaults.Value.AccountThumbnailLayout;
+			this.CharacterAccountMap ??= defaults.Value.CharacterAccountMap;
+			this.ClientLayout ??= defaults.Value.ClientLayout;
+			this.ClientHotkey ??= defaults.Value.ClientHotkey;
+			this.MinimizeAllClientsHotkeys ??= defaults.Value.MinimizeAllClientsHotkeys;
+			this.ToggleThumbnailsHotkeys ??= defaults.Value.ToggleThumbnailsHotkeys;
+			this.ClickThroughModifierHotkeys ??= defaults.Value.ClickThroughModifierHotkeys;
+			this.DisableThumbnail ??= defaults.Value.DisableThumbnail;
+			this.PriorityClients ??= defaults.Value.PriorityClients;
+			this.ExecutablesToPreview ??= defaults.Value.ExecutablesToPreview;
 		}
 
 		private static int ApplyRestrictions(int value, int minimum, int maximum)

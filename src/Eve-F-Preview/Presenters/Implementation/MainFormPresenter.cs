@@ -31,6 +31,7 @@ namespace EveFPreview.Presenters
 		private readonly ICharacterPortraitService _characterPortraitService;
 		private readonly IDictionary<string, IThumbnailDescription> _descriptionsCache;
 		private bool _suppressSizeNotifications;
+		private readonly System.Windows.Threading.DispatcherTimer _thumbnailSizeSaveTimer;
 
 		private bool _exitApplication;
 		private bool _portraitRefreshInProgress;
@@ -51,6 +52,14 @@ namespace EveFPreview.Presenters
 
 			this._suppressSizeNotifications = false;
 			this._exitApplication = false;
+
+			// Dragging a thumbnail's frame reports every intermediate size; save once it settles.
+			this._thumbnailSizeSaveTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+			this._thumbnailSizeSaveTimer.Tick += (_, _) =>
+			{
+				this._thumbnailSizeSaveTimer.Stop();
+				this._configurationStorage.Save();
+			};
 
 			this.View.FormActivated = this.Activate;
 			this.View.FormMinimized = this.Minimize;
@@ -345,7 +354,6 @@ namespace EveFPreview.Presenters
 			this.ApplyGlobalShortcutSettingsToConfiguration(this.View.GetGlobalShortcutSettings());
 			this._configurationStorage.Save();
 			await this._mediator.Publish(new ThumbnailHotkeysUpdated());
-			await this._mediator.Send(new SaveConfiguration());
 		}
 
 		private async void SaveApplicationSettings()
@@ -473,8 +481,6 @@ namespace EveFPreview.Presenters
 			this._configurationStorage.Save();
 
 			this.View.RefreshZoomSettings();
-
-			await this._mediator.Send(new SaveConfiguration());
 		}
 
 
@@ -533,11 +539,18 @@ namespace EveFPreview.Presenters
 			await this._mediator.Send(new SaveConfiguration());
 		}
 
+		/// <summary>A thumbnail was resized by dragging its frame: show and keep the new size.</summary>
 		public void UpdateThumbnailSize(Size size)
 		{
 			this._suppressSizeNotifications = true;
 			this.View.ThumbnailSize = size;
 			this._suppressSizeNotifications = false;
+
+			// The size notification above is suppressed (the thumbnails already have this size), so
+			// store it here - otherwise it was only saved once some other setting happened to change.
+			this._configuration.ThumbnailSize = size;
+			this._thumbnailSizeSaveTimer.Stop();
+			this._thumbnailSizeSaveTimer.Start();
 		}
 
 		private void OpenDocumentationLink(string url)

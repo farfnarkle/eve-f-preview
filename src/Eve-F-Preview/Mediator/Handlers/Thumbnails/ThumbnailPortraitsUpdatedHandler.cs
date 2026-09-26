@@ -17,9 +17,9 @@ namespace EveFPreview.Mediator.Handlers.Thumbnails
 
 		public Task Handle(ThumbnailPortraitsUpdated notification, CancellationToken cancellationToken)
 		{
-			this._manager.RefreshPortraitOverlays();
-
-			return Task.CompletedTask;
+			// Published from the portrait download threads; the thumbnails are WPF windows and may
+			// only be touched on the UI thread.
+			return UiThread.RunAsync(this._manager.RefreshPortraitOverlays);
 		}
 	}
 }
