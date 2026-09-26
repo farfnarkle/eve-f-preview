@@ -512,7 +512,11 @@ namespace EveFPreview.View
 					}
 				}
 
-				if (value != "")
+				// Unguarded, this used to fire on every LoadApplicationSettings() too (IconName is set
+				// there like any other loaded property), triggering a real SaveApplicationSettings()
+				// mid-load - which stomped every setting loaded AFTER IconName in that method with
+				// whatever the view's own not-yet-loaded default happened to be at that instant.
+				if (value != "" && !this._suppressEvents)
 				{
 					this.ApplicationSettingsChanged?.Invoke();
 				}

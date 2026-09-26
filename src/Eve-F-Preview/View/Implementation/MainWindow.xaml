@@ -5,7 +5,7 @@
         xmlns:controls="clr-namespace:EveFPreview.View.Controls"
         Title="EVE-F-Preview"
         Icon="pack://application:,,,/EVE-F-Preview;component/original-icon.ico"
-        Width="940" Height="740" MinWidth="780" MinHeight="540"
+        Width="750" Height="900" MinWidth="700" MinHeight="540"
         ResizeMode="CanResize"
         Topmost="True"
         WindowStartupLocation="CenterScreen"
