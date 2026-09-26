@@ -18,9 +18,11 @@ namespace EveFPreview.Services.Implementation
 		#endregion
 
 		#region Private fields
+#if LINUX
 		private readonly bool _enableWineCompatabilityMode;
 		private string _bashLocation;
 		private string _wmctrlLocation;
+#endif
 		private const string EXCEPTION_DUMP_FILE_NAME = "EVE-F-Preview.log";
 		#endregion
 
