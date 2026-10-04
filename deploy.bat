@@ -16,8 +16,9 @@ cd /d "%REPO_ROOT%"
 
 set "PUBLISH_EXE=bin\net8.0-windows8.0\win-x64\publish\EVE-F-Preview.exe"
 
-echo Building solution...
-dotnet build "src\EVE-F-Preview.sln" -c Release --no-incremental
+echo Building EVE-F-Preview...
+rem Only the app: the solution also holds Eve-F-Mock, a fake EVE client window for testing.
+dotnet build "src\Eve-F-Preview\Eve-F-Preview.csproj" -c Release --no-incremental
 if errorlevel 1 goto :failed
 
 echo Publishing single-file executable...
