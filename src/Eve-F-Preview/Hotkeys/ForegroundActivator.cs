@@ -84,6 +84,23 @@ namespace EveFPreview.UI.Hotkeys
 		/// </summary>
 		private static bool WaitForForeground(IntPtr handle, int maxMilliseconds = WaitForForegroundMilliseconds)
 		{
+			// Sleep(1) between checks instead of spinning with Sleep(0): the spin pinned a core at 100%
+			// on the UI thread for the 15-25 ms every switch takes. Raising the timer resolution for the
+			// wait keeps each sleep ~1 ms (not the default 15.6 ms), so a switch is still confirmed
+			// within about a millisecond of landing. Since Windows 10 2004 this only affects this process.
+			WinMmNativeMethods.timeBeginPeriod(1);
+			try
+			{
+				return ForegroundActivator.PollForeground(handle, maxMilliseconds);
+			}
+			finally
+			{
+				WinMmNativeMethods.timeEndPeriod(1);
+			}
+		}
+
+		private static bool PollForeground(IntPtr handle, int maxMilliseconds)
+		{
 			long freq = System.Diagnostics.Stopwatch.Frequency;
 			long start = System.Diagnostics.Stopwatch.GetTimestamp();
 			long hardDeadline = start + (freq * maxMilliseconds / 1000);
@@ -123,7 +140,7 @@ namespace EveFPreview.UI.Hotkeys
 					return false;
 				}
 
-				System.Threading.Thread.Sleep(0);
+				System.Threading.Thread.Sleep(1);
 			}
 		}
 
