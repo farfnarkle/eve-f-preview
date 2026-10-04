@@ -38,6 +38,27 @@ namespace EveFPreview.Services.Interop
 		[DllImport("user32.dll")]
 		public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
+		public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool IsWindowVisible(IntPtr hWnd);
+
+		public const uint GW_OWNER = 4;
+
+		[DllImport("user32.dll")]
+		public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+		[DllImport("user32.dll", CharSet = CharSet.Unicode)]
+		public static extern int GetWindowTextLength(IntPtr hWnd);
+
+		[DllImport("user32.dll", CharSet = CharSet.Unicode)]
+		public static extern int GetWindowText(IntPtr hWnd, [Out] char[] lpString, int nMaxCount);
+
 		[DllImport("user32.dll")]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, [MarshalAs(UnmanagedType.Bool)] bool fAttach);
