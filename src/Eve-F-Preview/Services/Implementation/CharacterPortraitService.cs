@@ -257,6 +257,12 @@ namespace EveFPreview.Services.Implementation
 					return null;
 				}
 
+				if (!CharacterPortraitService.IsEveImageUrl(portraitUrl))
+				{
+					this.Log($"Failed '{windowTitle}': ESI's portrait link isn't on EVE's own servers, not downloading it: {portraitUrl}");
+					return null;
+				}
+
 				string destinationPath = Path.Combine(thumbsDirectory, $"{characterId.Value}.png");
 				await this.DownloadFileAsync(portraitUrl, destinationPath, cancellationToken).ConfigureAwait(false);
 
@@ -381,6 +387,18 @@ namespace EveFPreview.Services.Implementation
 			}
 
 			return null;
+		}
+
+		/// <summary>
+		/// Only ever downloads portraits from CCP's own (https) servers - currently images.evetech.net -
+		/// whatever link the ESI response contains.
+		/// </summary>
+		private static bool IsEveImageUrl(string url)
+		{
+			return Uri.TryCreate(url, UriKind.Absolute, out Uri uri)
+				&& uri.Scheme == Uri.UriSchemeHttps
+				&& (uri.Host.Equals("evetech.net", StringComparison.OrdinalIgnoreCase)
+					|| uri.Host.EndsWith(".evetech.net", StringComparison.OrdinalIgnoreCase));
 		}
 
 		/// <summary>
