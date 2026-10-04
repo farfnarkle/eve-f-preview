@@ -173,6 +173,15 @@ The risk was low overall. Already fine: the update check and link opening (web l
   - **Byte-for-byte check:** after copying, the deployed exe is compared with the new build, and any mismatch fails the deploy instead of printing "Deploy complete".
   - **Why:** found while deploying this branch. When a deploy's output was sent to a log file, the app it started kept that log open, so the next deploy couldn't open it and silently did nothing; the log being read was the previous run's.
 
+## Follow-ups after the first round of play
+
+- **`f6468c1`: "Example Toon" placeholders removed.** EVE-O's stock config came with per-client settings for "EVE - Example Toon 1/2": colours, portrait mode, size and zoom anchor. They were saved into every config since, and the portrait download looked both up on EVE's API at every start and failed. New configs don't get them, and loading a config strips them from those five per-client settings. Nothing else changes; verified on a copy of your config. (EVE-O's placeholder cycle-group members, such as "Example DPS Toon 1", are left in the defaults on purpose: removing them would make a default group hotkey cycle every client instead of none.)
+- **`6967076`: deleted characters stop being looked up.**
+  - **Deleted:** when the name search finds nobody but the config has a stored character ID from an old portrait, that ID is checked with EVE's API. If the character has been deleted, its stale portrait entry is dropped and it stops failing at every start. Its thumbnail positions are kept.
+  - **Renamed:** the stored ID is used to download the portrait.
+  - **Verified:** tested against EVE's API. On your config, X Tyrannos (2123762234, "Character has been deleted!") was handled on the first start.
+  - **If it breaks:** a portrait missing for a character that does exist.
+
 ## Changed outside git (can't be undone with `git revert`)
 
 All deleted with your approval:
