@@ -49,6 +49,7 @@ namespace EveFPreview.View
 		private DrawingPoint _dragFormStart;
 		private Point _mouseDownClientLocation;
 		private bool _clickToActivate;
+		private bool _rowsApplied;
 
 		/// <summary>Fired (with the new top-left, in screen pixels) after the window is dragged to a new spot.</summary>
 		public Action<DrawingPoint> LocationDragged { get; set; }
@@ -132,7 +133,17 @@ namespace EveFPreview.View
 
 		public void SetRows(IReadOnlyList<IReadOnlyList<CharacterIndicatorCell>> rows)
 		{
-			this._rows = rows ?? Array.Empty<IReadOnlyList<CharacterIndicatorCell>>();
+			rows ??= Array.Empty<IReadOnlyList<CharacterIndicatorCell>>();
+
+			// Called every refresh tick; rebuilding (and re-rendering) an unchanged grid is wasted work.
+			if (this._rowsApplied && CharacterIndicatorWindow.SameRows(this._rows, rows))
+			{
+				this._rows = rows;
+				return;
+			}
+
+			this._rowsApplied = true;
+			this._rows = rows;
 
 			int rowCount = this._rows.Count;
 			int colCount = 0;
@@ -172,6 +183,39 @@ namespace EveFPreview.View
 					this._canvas.Children.Add(square);
 				}
 			}
+		}
+
+		private static bool SameRows(IReadOnlyList<IReadOnlyList<CharacterIndicatorCell>> a, IReadOnlyList<IReadOnlyList<CharacterIndicatorCell>> b)
+		{
+			if (a.Count != b.Count)
+			{
+				return false;
+			}
+
+			for (int rowIndex = 0; rowIndex < a.Count; rowIndex++)
+			{
+				IReadOnlyList<CharacterIndicatorCell> rowA = a[rowIndex];
+				IReadOnlyList<CharacterIndicatorCell> rowB = b[rowIndex];
+				if (rowA.Count != rowB.Count)
+				{
+					return false;
+				}
+
+				for (int colIndex = 0; colIndex < rowA.Count; colIndex++)
+				{
+					CharacterIndicatorCell cellA = rowA[colIndex];
+					CharacterIndicatorCell cellB = rowB[colIndex];
+					if (cellA.Handle != cellB.Handle
+						|| cellA.IsActive != cellB.IsActive
+						|| cellA.IsExcludedFromCycleGroup != cellB.IsExcludedFromCycleGroup
+						|| !string.Equals(cellA.Title, cellB.Title, StringComparison.Ordinal))
+					{
+						return false;
+					}
+				}
+			}
+
+			return true;
 		}
 
 		private void CharacterIndicatorWindow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

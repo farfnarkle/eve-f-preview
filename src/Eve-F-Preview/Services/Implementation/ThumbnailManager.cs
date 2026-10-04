@@ -185,6 +185,9 @@ namespace EveFPreview.Services
 			{
 				this.UpdateCycleHotkeyRegistration();
 			}
+
+			// The click-through modifier is saved together with the hotkeys.
+			this.UpdateClickThroughPolling();
 		}
 
 		private void RegisterAllHotkeys()
@@ -876,6 +879,23 @@ namespace EveFPreview.Services
 		}
 
 		/// <summary>
+		/// The modifier is polled 20 times a second, so only while one is actually configured
+		/// (it used to poll even with none set). Turning it off also turns click-through off.
+		/// </summary>
+		private void UpdateClickThroughPolling()
+		{
+			bool configured = !string.IsNullOrWhiteSpace(HotkeyFormatting.GetPrimaryHotkey(this._configuration.ClickThroughModifierHotkeys));
+			if (configured && this._thumbnailUpdateTimer.IsEnabled)
+			{
+				this._clickThroughPollTimer.Start();
+				return;
+			}
+
+			this._clickThroughPollTimer.Stop();
+			this.UpdateClickThroughState(); // no modifier configured: makes sure click-through is off
+		}
+
+		/// <summary>
 		/// Polls the configured click-through modifier key (if any) and enables/disables
 		/// click-through (WS_EX_TRANSPARENT) on all thumbnails while it is held down.
 		/// </summary>
@@ -970,7 +990,7 @@ namespace EveFPreview.Services
 
 			this._thumbnailUpdateTimer.Interval = TimeSpan.FromMilliseconds(this._configuration.ThumbnailRefreshPeriod);
 			this._thumbnailUpdateTimer.Start();
-			this._clickThroughPollTimer.Start();
+			this.UpdateClickThroughPolling();
 			this.AttachForegroundChangeHook();
 			this._characterIndicatorManager.Start();
 			this.RefreshThumbnails();
