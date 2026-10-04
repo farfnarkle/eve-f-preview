@@ -9,13 +9,22 @@
 //
 // Chat logs are UTF-16LE and EVE writes a BOM in front of every line. They exist only while
 // chat logging is enabled in the client; without it the system stays unknown.
+//
+// The logs are read on a worker thread, and only for the characters whose clients are running:
+// the Chatlogs folder holds a Local log for every character ever played (dozens), and reading
+// them all on the UI thread every refresh tick cost ~1 ms per tick plus a ~40 ms stall on the
+// first one.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace EveFPreview.Services.Implementation
 {
@@ -38,67 +47,131 @@ namespace EveFPreview.Services.Implementation
 		private static readonly TimeSpan DirectoryScanInterval = TimeSpan.FromSeconds(5);
 		private const int MaxBackfillFiles = 5;
 
-		private readonly object _sync = new object();
+		// The "Listener:" line is in the header EVE writes when it creates the file.
+		private const int ListenerHeaderBytes = 8192;
+
+		// Worker state. Only the one refresh pass allowed to run at a time (_refreshRunning) touches it.
 		private readonly Dictionary<long, CharacterLocationState> _byCharacterId =
 			new Dictionary<long, CharacterLocationState>();
-		private readonly Dictionary<string, long> _nameToCharacterId =
-			new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 		private readonly Dictionary<long, string> _newestFileByCharacter =
 			new Dictionary<long, string>();
-
+		private readonly Dictionary<string, string> _listenerByFile =
+			new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		private string _logsDirectory;
 		private DateTime _lastDirectoryScanUtc = DateTime.MinValue;
+		private int _refreshRunning;
 
-		public void Refresh()
+		// Results, read by the UI thread while a pass may be running.
+		private readonly ConcurrentDictionary<long, string> _systemByCharacterId =
+			new ConcurrentDictionary<long, string>();
+		private readonly ConcurrentDictionary<string, long> _nameToCharacterId =
+			new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+		public event Action SystemsChanged;
+
+		public void RequestRefresh(IEnumerable<(string WindowTitle, int CharacterId)> clients)
 		{
-			string dir = this.ResolveLogsDirectory();
-			if (string.IsNullOrEmpty(dir))
+			// Taken now, on the caller's thread: the worker must not touch the caller's collections.
+			var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			var characterIds = new HashSet<long>();
+			foreach ((string windowTitle, int characterId) in clients)
+			{
+				if (EveChatLogLocationService.TryGetCharacterName(windowTitle, out string name))
+				{
+					names.Add(name);
+				}
+
+				if (characterId > 0)
+				{
+					characterIds.Add(characterId);
+				}
+			}
+
+			// A pass still running (slow disk) just finishes; the next tick asks again.
+			if (Interlocked.Exchange(ref this._refreshRunning, 1) == 1)
 			{
 				return;
 			}
 
-			lock (this._sync)
+			Task.Run(() =>
 			{
-				// The Chatlogs folder accumulates thousands of files, so listing it is throttled;
-				// tailing the already known session files is what has to happen every tick.
-				if (DateTime.UtcNow - this._lastDirectoryScanUtc >= EveChatLogLocationService.DirectoryScanInterval)
+				bool changed = false;
+				try
 				{
-					this.ScanDirectory(dir);
+					changed = this.RefreshCore(names, characterIds);
+				}
+				catch (Exception ex)
+				{
+					// File access is already guarded; this only stops anything unexpected from taking the
+					// overlay down for good (the next tick tries again).
+					Debug.WriteLine(ex);
+				}
+				finally
+				{
+					Volatile.Write(ref this._refreshRunning, 0);
 				}
 
-				foreach (KeyValuePair<long, string> entry in this._newestFileByCharacter)
+				if (changed)
 				{
-					this.TailFile(entry.Key, entry.Value);
+					this.SystemsChanged?.Invoke();
 				}
-			}
+			});
 		}
 
 		public bool TryGetSystem(string windowTitle, int characterId, out string systemName)
 		{
-			systemName = null;
-			string characterName = EveChatLogLocationService.StripEvePrefix(windowTitle);
-
-			lock (this._sync)
+			if (characterId > 0
+				&& this._systemByCharacterId.TryGetValue(characterId, out systemName)
+				&& !string.IsNullOrEmpty(systemName))
 			{
-				if (characterId > 0
-					&& this._byCharacterId.TryGetValue(characterId, out CharacterLocationState byId)
-					&& !string.IsNullOrEmpty(byId.SystemName))
-				{
-					systemName = byId.SystemName;
-					return true;
-				}
+				return true;
+			}
 
-				if (!string.IsNullOrEmpty(characterName)
-					&& this._nameToCharacterId.TryGetValue(characterName, out long mappedId)
-					&& this._byCharacterId.TryGetValue(mappedId, out CharacterLocationState byName)
-					&& !string.IsNullOrEmpty(byName.SystemName))
-				{
-					systemName = byName.SystemName;
-					return true;
-				}
+			string characterName = EveChatLogLocationService.StripEvePrefix(windowTitle);
+			if (!string.IsNullOrEmpty(characterName)
+				&& this._nameToCharacterId.TryGetValue(characterName, out long mappedId)
+				&& this._systemByCharacterId.TryGetValue(mappedId, out systemName)
+				&& !string.IsNullOrEmpty(systemName))
+			{
+				return true;
+			}
 
+			systemName = null;
+			return false;
+		}
+
+		/// <summary>Tails the running characters' current Local logs. Returns whether any system changed.</summary>
+		private bool RefreshCore(ISet<string> runningNames, ISet<long> runningCharacterIds)
+		{
+			string dir = this.ResolveLogsDirectory();
+			if (string.IsNullOrEmpty(dir))
+			{
 				return false;
 			}
+
+			// The Chatlogs folder accumulates thousands of files, so listing it is throttled;
+			// tailing the running characters' session files is what has to happen every tick.
+			if (DateTime.UtcNow - this._lastDirectoryScanUtc >= EveChatLogLocationService.DirectoryScanInterval)
+			{
+				this.ScanDirectory(dir);
+			}
+
+			bool changed = false;
+			foreach (KeyValuePair<long, string> entry in this._newestFileByCharacter)
+			{
+				if (!runningCharacterIds.Contains(entry.Key))
+				{
+					string listener = this.GetListenerName(entry.Key, entry.Value);
+					if (listener == null || !runningNames.Contains(listener))
+					{
+						continue;
+					}
+				}
+
+				changed |= this.TailFile(entry.Key, entry.Value);
+			}
+
+			return changed;
 		}
 
 		private void ScanDirectory(string dir)
@@ -141,9 +214,77 @@ namespace EveFPreview.Services.Implementation
 					this._newestFileByCharacter[characterId] = path;
 				}
 			}
+
+			// Only the current session files' listener names are ever needed again.
+			var current = new HashSet<string>(this._newestFileByCharacter.Values, StringComparer.OrdinalIgnoreCase);
+			foreach (string stale in this._listenerByFile.Keys.Where(path => !current.Contains(path)).ToList())
+			{
+				this._listenerByFile.Remove(stale);
+			}
 		}
 
-		private void TailFile(long characterId, string path)
+		/// <summary>
+		/// The character name a session file belongs to, from the "Listener:" line in its header -
+		/// read once per file (not the whole file), so a character can be matched to a running
+		/// client without tailing every character's log.
+		/// </summary>
+		private string GetListenerName(long characterId, string path)
+		{
+			if (this._listenerByFile.TryGetValue(path, out string cached))
+			{
+				return cached.Length > 0 ? cached : null;
+			}
+
+			string header;
+			long length;
+			try
+			{
+				using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+				{
+					length = stream.Length;
+					var buffer = new byte[(int)Math.Min(length, EveChatLogLocationService.ListenerHeaderBytes)];
+					int read = 0;
+					while (read < buffer.Length)
+					{
+						int step = stream.Read(buffer, read, buffer.Length - read);
+						if (step <= 0)
+						{
+							break;
+						}
+
+						read += step;
+					}
+
+					header = EveChatLogLocationService.DecodeUtf16(buffer, read - (read % 2));
+				}
+			}
+			catch (IOException)
+			{
+				return null;
+			}
+			catch (UnauthorizedAccessException)
+			{
+				return null;
+			}
+
+			Match listener = ListenerRegex.Match(header);
+			string name = listener.Success ? listener.Groups["name"].Value.Trim() : string.Empty;
+			if (name.Length > 0)
+			{
+				this._nameToCharacterId[name] = characterId;
+			}
+			else if (length < EveChatLogLocationService.ListenerHeaderBytes)
+			{
+				// Possibly still being written: look again next time instead of remembering "none".
+				return null;
+			}
+
+			this._listenerByFile[path] = name;
+			return name.Length > 0 ? name : null;
+		}
+
+		/// <summary>Reads what's new in the character's session file. Returns whether its system changed.</summary>
+		private bool TailFile(long characterId, string path)
 		{
 			if (!this._byCharacterId.TryGetValue(characterId, out CharacterLocationState state))
 			{
@@ -161,38 +302,36 @@ namespace EveFPreview.Services.Implementation
 				state.BackfillAttempted = false;
 			}
 
-			if (!this.TryReadNewText(path, state, out string chunk))
+			if (this.TryReadNewText(path, state, out string chunk))
 			{
-				return;
-			}
-
-			string text = state.PendingLine + chunk;
-			int lastNewline = text.LastIndexOfAny(new[] { '\r', '\n' });
-			if (lastNewline >= 0)
-			{
-				state.PendingLine = text.Substring(lastNewline + 1);
-				text = text.Substring(0, lastNewline + 1);
-
-				if (state.NeedsListenerParse)
+				string text = state.PendingLine + chunk;
+				int lastNewline = text.LastIndexOfAny(new[] { '\r', '\n' });
+				if (lastNewline >= 0)
 				{
-					Match listener = ListenerRegex.Match(text);
-					if (listener.Success)
+					state.PendingLine = text.Substring(lastNewline + 1);
+					text = text.Substring(0, lastNewline + 1);
+
+					if (state.NeedsListenerParse)
 					{
-						string name = listener.Groups["name"].Value.Trim();
-						if (!string.IsNullOrEmpty(name))
+						Match listener = ListenerRegex.Match(text);
+						if (listener.Success)
 						{
-							state.CharacterName = name;
-							this._nameToCharacterId[name] = characterId;
-							state.NeedsListenerParse = false;
+							string name = listener.Groups["name"].Value.Trim();
+							if (!string.IsNullOrEmpty(name))
+							{
+								state.CharacterName = name;
+								this._nameToCharacterId[name] = characterId;
+								state.NeedsListenerParse = false;
+							}
 						}
 					}
-				}
 
-				EveChatLogLocationService.ApplyLocationLines(state, text);
-			}
-			else
-			{
-				state.PendingLine = text;
+					EveChatLogLocationService.ApplyLocationLines(state, text);
+				}
+				else
+				{
+					state.PendingLine = text;
+				}
 			}
 
 			if (string.IsNullOrEmpty(state.SystemName) && !state.BackfillAttempted)
@@ -200,6 +339,16 @@ namespace EveFPreview.Services.Implementation
 				this.BackfillFromOlderFiles(characterId, path, state);
 				state.BackfillAttempted = true;
 			}
+
+			if (string.IsNullOrEmpty(state.SystemName)
+				|| (this._systemByCharacterId.TryGetValue(characterId, out string published)
+					&& string.Equals(published, state.SystemName, StringComparison.Ordinal)))
+			{
+				return false;
+			}
+
+			this._systemByCharacterId[characterId] = state.SystemName;
+			return true;
 		}
 
 		/// <summary>
@@ -344,7 +493,7 @@ namespace EveFPreview.Services.Implementation
 			}
 
 			// EVE emits a BOM in front of every line, not just at the start of the file
-			return Encoding.Unicode.GetString(buffer, 0, count).Replace("\uFEFF", string.Empty);
+			return Encoding.Unicode.GetString(buffer, 0, count).Replace("﻿", string.Empty);
 		}
 
 		private string ResolveLogsDirectory()
@@ -363,6 +512,16 @@ namespace EveFPreview.Services.Implementation
 			}
 
 			return null;
+		}
+
+		/// <summary>The character name of a logged-in client's window title ("EVE - Name"); false for anything else.</summary>
+		private static bool TryGetCharacterName(string windowTitle, out string name)
+		{
+			const string prefix = "EVE - ";
+			name = windowTitle != null && windowTitle.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+				? windowTitle.Substring(prefix.Length).Trim()
+				: null;
+			return !string.IsNullOrEmpty(name);
 		}
 
 		private static string StripEvePrefix(string windowTitle)

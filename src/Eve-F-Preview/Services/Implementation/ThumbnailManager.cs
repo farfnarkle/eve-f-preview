@@ -124,6 +124,8 @@ namespace EveFPreview.Services
 
 			this._hideThumbnailsDelay = this._configuration.HideThumbnailsDelay;
 
+			this._locationService.SystemsChanged += this.LocationService_SystemsChanged;
+
 			this._characterIndicatorManager.CellClicked = this.IndicatorCellClicked;
 			this._characterIndicatorManager.CellShiftClicked = this.ThumbnailToggleCycleGroup;
 		}
@@ -1296,7 +1298,11 @@ namespace EveFPreview.Services
 
 			if (this._configuration.ShowSystemNameOnThumbnail)
 			{
-				this._locationService.Refresh();
+				// Reads the chat logs in the background; SystemsChanged brings any news straight back.
+				this._locationService.RequestRefresh(this._thumbnailViews.Values
+					.Where(view => !view.IsExternalApp && view.Title != DEFAULT_CLIENT_TITLE)
+					.Select(view => (view.Title, this._configuration.TryGetCharacterId(view.Title, out int characterId) ? characterId : 0))
+					.ToList());
 			}
 
 			// Snap thumbnail
@@ -1320,24 +1326,7 @@ namespace EveFPreview.Services
 				// update ZoomAnchor regardless
 				view.ClientZoomAnchor = this._configuration.GetZoomAnchor(view.Title, this._configuration.ThumbnailZoomAnchor);
 
-				if (this._configuration.ShowSystemNameOnThumbnail
-					&& view.Title != DEFAULT_CLIENT_TITLE)
-				{
-					int characterId = 0;
-					this._configuration.TryGetCharacterId(view.Title, out characterId);
-					if (this._locationService.TryGetSystem(view.Title, characterId, out string systemName))
-					{
-						view.SetSystemName(systemName);
-					}
-					else
-					{
-						view.SetSystemName(null);
-					}
-				}
-				else
-				{
-					view.SetSystemName(null);
-				}
+				this.UpdateSystemName(view);
 
 
 				if (hideAllThumbnails || this._configuration.IsThumbnailDisabled(view.Title))
@@ -1441,6 +1430,40 @@ namespace EveFPreview.Services
 			}
 
 			this.EnableViewEvents();
+		}
+
+		private void UpdateSystemName(IThumbnailView view)
+		{
+			if (this._configuration.ShowSystemNameOnThumbnail
+				&& view.Title != DEFAULT_CLIENT_TITLE)
+			{
+				int characterId = 0;
+				this._configuration.TryGetCharacterId(view.Title, out characterId);
+				if (this._locationService.TryGetSystem(view.Title, characterId, out string systemName))
+				{
+					view.SetSystemName(systemName);
+				}
+				else
+				{
+					view.SetSystemName(null);
+				}
+			}
+			else
+			{
+				view.SetSystemName(null);
+			}
+		}
+
+		/// <summary>The chat log reader found a client in a new system: show it now rather than on the next tick.</summary>
+		private void LocationService_SystemsChanged()
+		{
+			UiThread.Run(() =>
+			{
+				foreach (IThumbnailView view in this._thumbnailViews.Values)
+				{
+					this.UpdateSystemName(view);
+				}
+			});
 		}
 
 		public void UpdateThumbnailsSize()
