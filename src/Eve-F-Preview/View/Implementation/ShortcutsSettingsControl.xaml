@@ -102,17 +102,6 @@
 	</UserControl.Resources>
 
 	<StackPanel>
-		<StackPanel x:Name="CycleGroupSection">
-			<TextBlock Style="{StaticResource SectionTitle}" Text="Cycle group hotkeys" />
-			<Border Style="{StaticResource Card}">
-				<StackPanel>
-					<ContentControl Content="{StaticResource PairHeader}" Focusable="False" />
-					<ItemsControl x:Name="CycleGroupRows" ItemTemplate="{StaticResource HotkeyPairTemplate}" Focusable="False" />
-				</StackPanel>
-			</Border>
-			<TextBlock Style="{StaticResource Caption}" Margin="2,8,0,0" Text="{x:Static local:SettingsHelpText.CycleGroups}" />
-		</StackPanel>
-
 		<StackPanel x:Name="DynamicCycleSection">
 			<TextBlock Style="{StaticResource SectionTitle}" Text="Dynamic cycle hotkeys" />
 			<Border Style="{StaticResource Card}">
@@ -122,6 +111,17 @@
 				</StackPanel>
 			</Border>
 			<TextBlock Style="{StaticResource Caption}" Margin="2,8,0,0" Text="{x:Static local:SettingsHelpText.DynamicCycleHotkeys}" />
+		</StackPanel>
+
+		<StackPanel x:Name="CycleGroupSection">
+			<TextBlock Style="{StaticResource SectionTitle}" Text="Cycle group hotkeys" />
+			<Border Style="{StaticResource Card}">
+				<StackPanel>
+					<ContentControl Content="{StaticResource PairHeader}" Focusable="False" />
+					<ItemsControl x:Name="CycleGroupRows" ItemTemplate="{StaticResource HotkeyPairTemplate}" Focusable="False" />
+				</StackPanel>
+			</Border>
+			<TextBlock Style="{StaticResource Caption}" Margin="2,8,0,0" Text="{x:Static local:SettingsHelpText.CycleGroups}" />
 		</StackPanel>
 
 		<TextBlock Style="{StaticResource SectionTitle}" Text="Other hotkeys" />

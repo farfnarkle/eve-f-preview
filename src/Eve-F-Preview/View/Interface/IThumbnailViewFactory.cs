@@ -5,6 +5,6 @@ namespace EveFPreview.View
 {
 	public interface IThumbnailViewFactory
 	{
-		IThumbnailView Create(IntPtr id, string title, Size size);
+		IThumbnailView Create(IntPtr id, string title, Size size, bool isExternalApp);
 	}
 }

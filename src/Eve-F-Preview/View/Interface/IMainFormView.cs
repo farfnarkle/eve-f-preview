@@ -94,6 +94,9 @@ namespace EveFPreview.View
 		/// <summary>Gives the view direct access to the cycle group membership dictionaries for the Cycle Groups tab UI.</summary>
 		void SetCycleGroupsConfiguration(IThumbnailConfiguration configuration, Action persistConfiguration = null);
 
+		/// <summary>Gives the view direct access to the list of non-EVE apps in cycling for the Other apps tab UI.</summary>
+		void SetCycleAppsConfiguration(IThumbnailConfiguration configuration, Action persistConfiguration = null);
+
 		/// <summary>Gives the view direct access to config-profile operations (list/switch/save-as/import) for the General tab UI.</summary>
 		void SetConfigurationStorage(IConfigurationStorage configurationStorage);
 

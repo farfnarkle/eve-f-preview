@@ -35,6 +35,9 @@ namespace EveFPreview.Configuration
 		Dictionary<string, Size> PerClientThumbnailSize { get; set; }
 		Dictionary<string, bool> CycleGroupExclusions { get; set; }
 
+		/// <summary>Non-EVE programs tracked as clients so they can be cycled to (Other apps page).</summary>
+		List<CycleApp> CycleApps { get; set; }
+
 		bool MinimizeToTray { get; set; }
 		bool StartMinimized { get; set; }
 		/// <summary>Periodically ask GitHub whether a newer release exists (notify only - never downloads anything).</summary>
@@ -176,6 +179,7 @@ namespace EveFPreview.Configuration
 		Keys StringToKey(string hotkey);
 		bool IsPriorityClient(string currentClient);
 		bool IsExecutableToPreview(string processName);
+		bool TryGetCycleApp(string processName, out CycleApp app);
 
 		bool IsThumbnailDisabled(string currentClient);
 		void ToggleThumbnail(string currentClient, bool isDisabled);

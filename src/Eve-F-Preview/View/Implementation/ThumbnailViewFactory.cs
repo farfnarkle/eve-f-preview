@@ -15,13 +15,15 @@ namespace EveFPreview.View
 			this._enableWineCompatibilityMode = configuration.EnableWineCompatibilityMode;
 		}
 
-		public IThumbnailView Create(IntPtr id, string title, Size size)
+		public IThumbnailView Create(IntPtr id, string title, Size size, bool isExternalApp)
 		{
 			IThumbnailView view = this._enableWineCompatibilityMode
 				? (IThumbnailView)this._controller.Create<StaticThumbnailView>()
 				: (IThumbnailView)this._controller.Create<LiveThumbnailView>();
 
 			view.Id = id;
+			// Before Title: setting the title applies the portrait setting, which apps never use.
+			view.IsExternalApp = isExternalApp;
 			view.Title = title;
 			view.ThumbnailSize = size;
 

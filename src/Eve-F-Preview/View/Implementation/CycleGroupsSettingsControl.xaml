@@ -101,7 +101,7 @@
 				</Button>
 
 				<TextBlock Grid.Row="1" Text="Window title" VerticalAlignment="Center" Margin="0,10,16,0" />
-				<TextBox x:Name="ManualClientTextBox" Grid.Row="1" Grid.Column="1" Margin="0,10,8,0" ToolTip="The exact window title, e.g. &quot;EVE - Character Name&quot;" />
+				<TextBox x:Name="ManualClientTextBox" Grid.Row="1" Grid.Column="1" Margin="0,10,8,0" ToolTip="The exact window title, e.g. &quot;EVE - Character Name&quot;, or the program name of an app added on the Other apps page" />
 				<Button Grid.Row="1" Grid.Column="2" Style="{StaticResource ActionButton}" MinWidth="110" Margin="0,10,0,0" Click="AddManualClientButton_Click">
 					<StackPanel Orientation="Horizontal">
 						<TextBlock Style="{StaticResource Icon}" Text="&#xE710;" FontSize="12" Margin="0,0,8,0" />

@@ -11,6 +11,9 @@ namespace EveFPreview.View
 		IntPtr Id { get; set; }
 		string Title { get; set; }
 
+		/// <summary>A non-EVE program added on the Other apps page: no portraits, and EVE-only window handling is skipped.</summary>
+		bool IsExternalApp { get; set; }
+
 		bool IsActive { get; set; }
 		Point ThumbnailLocation { get; set; }
 		Size ThumbnailSize { get; set; }

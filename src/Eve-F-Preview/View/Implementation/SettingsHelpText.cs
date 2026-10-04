@@ -11,7 +11,7 @@ namespace EveFPreview.View
 		public const string HideCaptionBar = "Hide the Windows title bar on EVE client windows.";
 		public const string CycleHotkeysWhenEveActive = "Avoid stealing cycle hotkeys when you are not in EVE.";
 		public const string CycleMouseDoubleClickProtection = "Some side buttons register one press as two clicks and skip a client. When this is on, only that extra click is ignored, so you can still cycle as fast as you press.";
-		public const string DynamicCycleGroup = "When enabled, cycle in on-screen thumbnail order. Shortcuts then show Dynamic cycle hotkeys instead of numbered groups.";
+		public const string DynamicCycleGroup = "Adds Dynamic cycle hotkeys that step through clients in on-screen thumbnail order. Numbered group hotkeys keep working; if one uses the same key, the dynamic hotkey wins.";
 		public const string AccountBasedPositioning = "Remember thumbnail positions per EVE account.";
 		public const string UniqueLayout = "Store a separate thumbnail layout for each EVE client.";
 		public const string AutoSettingsSync = "Optional settings sync on startup when EVE is closed.";
@@ -27,7 +27,7 @@ namespace EveFPreview.View
 		public const string ShowFrames = "Draw a border around each thumbnail.";
 		public const string CycleGroupIndicator = "Where the cycle-group badge is drawn on each thumbnail.";
 		public const string CycleGroups = "Forward and backward hotkeys for each numbered cycle group.";
-		public const string DynamicCycleHotkeys = "Cycle all non-excluded clients in on-screen thumbnail order.";
+		public const string DynamicCycleHotkeys = "Cycle all non-excluded clients in on-screen thumbnail order. A group hotkey set to the same key is ignored.";
 		public const string ClickThrough = "Hold this modifier to click through thumbnails to windows behind them (for example Ctrl+Shift).";
 		public const string SettingsProfile = "Which EVE settings profile folder to copy from and to.";
 		public const string SourceCharacter = "Character to copy settings from.";

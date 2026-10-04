@@ -185,33 +185,46 @@ namespace EveFPreview.Services
 
 		private void RegisterAllHotkeys()
 		{
+			// Dynamic cycling doesn't switch the numbered groups off - their hotkeys keep working
+			// alongside it. A group hotkey that's also a dynamic cycle hotkey is skipped, so
+			// dynamic cycling gets that key (the OS would refuse a second registration anyway).
+			var dynamicKeys = new HashSet<Keys>();
 			if (this._configuration.DynamicCycleGroup)
 			{
-				this.RegisterDynamicCycleHotkeys(
-					this._configuration.DynamicCycleForwardHotkeys?.Select(x => this._configuration.StringToKey(x)),
-					this._configuration.DynamicCycleBackwardHotkeys?.Select(x => this._configuration.StringToKey(x)));
+				List<Keys> forwardKeys = this.ToKeys(this._configuration.DynamicCycleForwardHotkeys).ToList();
+				List<Keys> backwardKeys = this.ToKeys(this._configuration.DynamicCycleBackwardHotkeys).ToList();
+				this.RegisterDynamicCycleHotkeys(forwardKeys, backwardKeys);
+
+				dynamicKeys.UnionWith(forwardKeys);
+				dynamicKeys.UnionWith(backwardKeys);
+				dynamicKeys.Remove(Keys.None);
 			}
-			else
-			{
-				this.RegisterCycleClientHotkey(this._configuration.CycleGroup1ForwardHotkeys?.Select(x => this._configuration.StringToKey(x)), true, this._configuration.CycleGroup1ClientsOrder);
-				this.RegisterCycleClientHotkey(this._configuration.CycleGroup1BackwardHotkeys?.Select(x => this._configuration.StringToKey(x)), false, this._configuration.CycleGroup1ClientsOrder);
 
-				this.RegisterCycleClientHotkey(this._configuration.CycleGroup2ForwardHotkeys?.Select(x => this._configuration.StringToKey(x)), true, this._configuration.CycleGroup2ClientsOrder);
-				this.RegisterCycleClientHotkey(this._configuration.CycleGroup2BackwardHotkeys?.Select(x => this._configuration.StringToKey(x)), false, this._configuration.CycleGroup2ClientsOrder);
+			IEnumerable<Keys> GroupKeys(List<string> hotkeys) => this.ToKeys(hotkeys).Where(key => !dynamicKeys.Contains(key));
 
-				this.RegisterCycleClientHotkey(this._configuration.CycleGroup3ForwardHotkeys?.Select(x => this._configuration.StringToKey(x)), true, this._configuration.CycleGroup3ClientsOrder);
-				this.RegisterCycleClientHotkey(this._configuration.CycleGroup3BackwardHotkeys?.Select(x => this._configuration.StringToKey(x)), false, this._configuration.CycleGroup3ClientsOrder);
+			this.RegisterCycleClientHotkey(GroupKeys(this._configuration.CycleGroup1ForwardHotkeys), true, () => this._configuration.CycleGroup1ClientsOrder);
+			this.RegisterCycleClientHotkey(GroupKeys(this._configuration.CycleGroup1BackwardHotkeys), false, () => this._configuration.CycleGroup1ClientsOrder);
 
-				this.RegisterCycleClientHotkey(this._configuration.CycleGroup4ForwardHotkeys?.Select(x => this._configuration.StringToKey(x)), true, this._configuration.CycleGroup4ClientsOrder);
-				this.RegisterCycleClientHotkey(this._configuration.CycleGroup4BackwardHotkeys?.Select(x => this._configuration.StringToKey(x)), false, this._configuration.CycleGroup4ClientsOrder);
+			this.RegisterCycleClientHotkey(GroupKeys(this._configuration.CycleGroup2ForwardHotkeys), true, () => this._configuration.CycleGroup2ClientsOrder);
+			this.RegisterCycleClientHotkey(GroupKeys(this._configuration.CycleGroup2BackwardHotkeys), false, () => this._configuration.CycleGroup2ClientsOrder);
 
-				this.RegisterCycleClientHotkey(this._configuration.CycleGroup5ForwardHotkeys?.Select(x => this._configuration.StringToKey(x)), true, this._configuration.CycleGroup5ClientsOrder);
-				this.RegisterCycleClientHotkey(this._configuration.CycleGroup5BackwardHotkeys?.Select(x => this._configuration.StringToKey(x)), false, this._configuration.CycleGroup5ClientsOrder);
-			}
+			this.RegisterCycleClientHotkey(GroupKeys(this._configuration.CycleGroup3ForwardHotkeys), true, () => this._configuration.CycleGroup3ClientsOrder);
+			this.RegisterCycleClientHotkey(GroupKeys(this._configuration.CycleGroup3BackwardHotkeys), false, () => this._configuration.CycleGroup3ClientsOrder);
+
+			this.RegisterCycleClientHotkey(GroupKeys(this._configuration.CycleGroup4ForwardHotkeys), true, () => this._configuration.CycleGroup4ClientsOrder);
+			this.RegisterCycleClientHotkey(GroupKeys(this._configuration.CycleGroup4BackwardHotkeys), false, () => this._configuration.CycleGroup4ClientsOrder);
+
+			this.RegisterCycleClientHotkey(GroupKeys(this._configuration.CycleGroup5ForwardHotkeys), true, () => this._configuration.CycleGroup5ClientsOrder);
+			this.RegisterCycleClientHotkey(GroupKeys(this._configuration.CycleGroup5BackwardHotkeys), false, () => this._configuration.CycleGroup5ClientsOrder);
 
 			this.RegisterMinimizeAllClientsHotkey(this._configuration.MinimizeAllClientsHotkeys?.Select(x => this._configuration.StringToKey(x)));
 
 			this.RegisterToggleThumbnailsHotkey(this._configuration.ToggleThumbnailsHotkeys?.Select(x => this._configuration.StringToKey(x)));
+		}
+
+		private IEnumerable<Keys> ToKeys(List<string> hotkeys)
+		{
+			return hotkeys?.Select(x => this._configuration.StringToKey(x)) ?? Enumerable.Empty<Keys>();
 		}
 
 		public IThumbnailView GetClientByTitle(string title)
@@ -262,7 +275,7 @@ namespace EveFPreview.Services
 
 		public void MinimizeAllClients()
 		{
-			foreach (var x in _thumbnailViews.Reverse())
+			foreach (var x in _thumbnailViews.Reverse().Where(x => !x.Value.IsExternalApp))
 			{
 				this._windowManager.MinimizeWindow(x.Value.Id, this._configuration.WindowsAnimationStyle, false);
 			}
@@ -271,19 +284,15 @@ namespace EveFPreview.Services
 		{
 			this.SyncActiveClientFromForeground();
 
-			if (this._configuration.DynamicCycleGroup)
-			{
-				this.CycleNextClientByThumbnailPosition(isForwards, cycleOrder);
-				return;
-			}
-
+			// Group hotkeys cycle in the group's own order even while dynamic cycling is on - it has
+			// hotkeys of its own now, rather than taking over the group ones.
 			IOrderedEnumerable<KeyValuePair<string, int>> clientOrder;
 			Dictionary<string, int> _cycleOrder = new Dictionary<string, int>(cycleOrder);
 
 			if ( _cycleOrder.Count == 0 ) 
 			{
 				int order = 0;
-				foreach( var x in _thumbnailViews )
+				foreach( var x in _thumbnailViews.Where(x => this.IsInUnrestrictedCycle(x.Value)) )
 				{
 					// Several clients can share a title (every login screen is "EVE"). One entry per
 					// title is enough: the login-screen branch below walks all windows with that title.
@@ -399,6 +408,10 @@ namespace EveFPreview.Services
 				var titlesInGroup = new HashSet<string>(cycleOrder.Keys, StringComparer.OrdinalIgnoreCase);
 				candidates = candidates.Where(x => titlesInGroup.Contains(x.Value.Title));
 			}
+			else
+			{
+				candidates = candidates.Where(x => this.IsInUnrestrictedCycle(x.Value));
+			}
 
 			List<KeyValuePair<IntPtr, IThumbnailView>> ordered = OrderThumbnailsForDynamicCycle(candidates.ToList());
 
@@ -428,6 +441,17 @@ namespace EveFPreview.Services
 			}
 
 			this.SetActive(ordered[nextIndex]);
+		}
+
+		/// <summary>
+		/// Whether cycling that isn't limited to a group's own list - dynamic cycling, or a group
+		/// hotkey with no clients assigned - steps through this window. EVE clients always do; an
+		/// added app only when "Include in dynamic cycling" is on for it.
+		/// </summary>
+		private bool IsInUnrestrictedCycle(IThumbnailView view)
+		{
+			return !view.IsExternalApp
+				|| (this._configuration.TryGetCycleApp(view.Title, out CycleApp app) && app.IncludeInDynamicCycle);
 		}
 
 		private static List<KeyValuePair<IntPtr, IThumbnailView>> OrderThumbnailsForDynamicCycle(
@@ -479,7 +503,11 @@ namespace EveFPreview.Services
 			return rows;
 		}
 
-		public void RegisterCycleClientHotkey(IEnumerable<Keys> keys, bool isForwards, Dictionary<string, int> cycleOrder)
+		/// <param name="cycleOrder">
+		/// Read on every press rather than once here: the Cycle groups page replaces a group's
+		/// dictionary when it's edited, and a captured copy would keep cycling the old members.
+		/// </param>
+		public void RegisterCycleClientHotkey(IEnumerable<Keys> keys, bool isForwards, Func<Dictionary<string, int>> cycleOrder)
 		{
 			if (keys == null)
 			{
@@ -502,7 +530,7 @@ namespace EveFPreview.Services
 						return;
 					}
 
-					this.InvokeOnUiThread(() => this.CycleNextClient(isForwards, cycleOrder));
+					this.InvokeOnUiThread(() => this.CycleNextClient(isForwards, cycleOrder() ?? new Dictionary<string, int>()));
 					e.Handled = true;
 				};
 
@@ -1071,7 +1099,7 @@ namespace EveFPreview.Services
 					? perClientSize
 					: this._configuration.ThumbnailSize;
 
-				IThumbnailView view = this._thumbnailViewFactory.Create(process.Handle, process.Title, initialSize);
+				IThumbnailView view = this._thumbnailViewFactory.Create(process.Handle, process.Title, initialSize, process.IsExternalApp);
 				view.IsOverlayEnabled = this._configuration.ShowThumbnailOverlays;
 				view.IsExcludedFromCycleGroup = this._configuration.CycleGroupExclusions.TryGetValue(process.Title, out bool isExcluded) && isExcluded;
 				// Title (and its indicator draw) was already set by the factory before we knew the restored exclusion state above.
@@ -1087,7 +1115,10 @@ namespace EveFPreview.Services
 											? this.ResolveThumbnailLocation(view, this._activeClient.Title, this.GetSpawnLocation(this._configuration.NewPreviewSpawnLocation))
 											: this.GetSpawnLocation(this._configuration.LoginThumbnailLocation);
 
-				this.UpdateClientMetadata(process.Handle, process.Title);
+				if (!process.IsExternalApp)
+				{
+					this.UpdateClientMetadata(process.Handle, process.Title);
+				}
 
 				this._thumbnailViews.Add(view.Id, view);
 
@@ -1147,7 +1178,10 @@ namespace EveFPreview.Services
 					this.ApplyCaptionBar(view);
 				}
 
-				this.UpdateClientMetadata(process.Handle, process.Title);
+				if (!process.IsExternalApp)
+				{
+					this.UpdateClientMetadata(process.Handle, process.Title);
+				}
 			}
 
 			foreach (IProcessInfo process in removedProcesses)
@@ -1498,7 +1532,8 @@ namespace EveFPreview.Services
 			}
 
 			// Minimize the currently active client if needed
-			if (this._configuration.MinimizeInactiveClients && !this._configuration.IsPriorityClient(this._activeClient.Title))
+			bool activeIsApp = this._thumbnailViews.TryGetValue(this._activeClient.Handle, out IThumbnailView activeView) && activeView.IsExternalApp;
+			if (this._configuration.MinimizeInactiveClients && !activeIsApp && !this._configuration.IsPriorityClient(this._activeClient.Title))
 			{
 				this._windowManager.MinimizeWindow(this._activeClient.Handle, this._configuration.WindowsAnimationStyle, false);
 #if LINUX
@@ -2001,7 +2036,8 @@ namespace EveFPreview.Services
 		}
 		private void ApplyCaptionBar(IThumbnailView view)
 		{
-			if (view.Title == ThumbnailManager.DEFAULT_CLIENT_TITLE) return;
+			// Window styling and layout tracking are EVE client features - other programs' windows are left alone.
+			if (view.Title == ThumbnailManager.DEFAULT_CLIENT_TITLE || view.IsExternalApp) return;
 
 			bool enable = this._configuration.HideCaptionOnClients;
 
@@ -2041,7 +2077,7 @@ namespace EveFPreview.Services
 			IntPtr clientHandle = view.Id;
 			string clientTitle = view.Title;
 
-			if (!this._configuration.EnableClientLayoutTracking)
+			if (!this._configuration.EnableClientLayoutTracking || view.IsExternalApp)
 			{
 				return;
 			}
@@ -2082,8 +2118,8 @@ namespace EveFPreview.Services
 			{
 				IThumbnailView view = entry.Value;
 
-				// No need to save layout for not yet logged-in clients
-				if (view.Title == ThumbnailManager.DEFAULT_CLIENT_TITLE)
+				// No need to save layout for not yet logged-in clients (or for other programs)
+				if (view.Title == ThumbnailManager.DEFAULT_CLIENT_TITLE || view.IsExternalApp)
 				{
 					continue;
 				}

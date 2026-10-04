@@ -73,7 +73,7 @@ namespace EveFPreview.View
 				this.StopRecording();
 			}
 
-			this.CycleGroupSection.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
+			// Group hotkeys stay available alongside dynamic cycling; only the dynamic ones come and go.
 			this.DynamicCycleSection.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
 		}
 

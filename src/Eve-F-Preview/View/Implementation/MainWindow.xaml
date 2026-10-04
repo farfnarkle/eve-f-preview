@@ -99,6 +99,9 @@
 					<ListBoxItem Tag="CycleGroupsPage">
 						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE8AB;" /><TextBlock Style="{StaticResource NavLabel}" Text="Cycle groups" /></StackPanel>
 					</ListBoxItem>
+					<ListBoxItem Tag="AppsPage">
+						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE7FC;" /><TextBlock Style="{StaticResource NavLabel}" Text="Other apps" /></StackPanel>
+					</ListBoxItem>
 					<ListBoxItem Tag="ClientsPage">
 						<StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource NavIcon}" Text="&#xE7F4;" /><TextBlock Style="{StaticResource NavLabel}" Text="Clients" /></StackPanel>
 					</ListBoxItem>
@@ -158,6 +161,15 @@
 									<Button x:Name="SaveConfigProfileAsButton" Content="Save as…" Style="{StaticResource ActionButton}" Margin="0,0,8,0" Click="SaveConfigProfileAsButton_Click" />
 									<Button x:Name="ImportConfigProfileButton" Content="Import…" Style="{StaticResource ActionButton}" Click="ImportConfigProfileButton_Click" />
 								</StackPanel>
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
+
+					<TextBlock Style="{StaticResource SectionTitle}" Text="Close clients" />
+					<Border Style="{StaticResource Card}">
+						<controls:CardStack>
+							<controls:SettingRow Title="Close all EVE clients" Description="Force-closes every running EVE client. You'll be asked to confirm.">
+								<Button x:Name="CloseAllEveClientsButton" Content="Close all" Style="{StaticResource DangerButton}" Click="CloseAllEveClients_Handler" />
 							</controls:SettingRow>
 						</controls:CardStack>
 					</Border>
@@ -378,9 +390,6 @@
 					<TextBlock Style="{StaticResource SectionTitle}" Text="Cycling" />
 					<Border Style="{StaticResource Card}">
 						<controls:CardStack>
-							<controls:SettingRow Title="Dynamic cycle group" Description="{x:Static local:SettingsHelpText.DynamicCycleGroup}">
-								<CheckBox x:Name="DynamicCycleGroupCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
-							</controls:SettingRow>
 							<controls:SettingRow Title="Only while EVE is focused" Description="{x:Static local:SettingsHelpText.CycleHotkeysWhenEveActive}">
 								<CheckBox x:Name="OnlyRegisterCycleHotkeysWhenEveFocusedCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
 							</controls:SettingRow>
@@ -399,9 +408,25 @@
 				<StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
 					<TextBlock Style="{StaticResource PageTitle}" Text="Cycle groups" />
 					<TextBlock Style="{StaticResource PageSubtitle}" Text="Which clients each numbered cycle hotkey steps through, and in what order." />
+					<Border Style="{StaticResource Card}" Margin="0,14,0,0">
+						<controls:CardStack>
+							<controls:SettingRow Title="Dynamic cycle group" Description="{x:Static local:SettingsHelpText.DynamicCycleGroup}">
+								<CheckBox x:Name="DynamicCycleGroupCheckBox" Style="{StaticResource ToggleSwitch}" Checked="OptionChanged_Handler" Unchecked="OptionChanged_Handler" />
+							</controls:SettingRow>
+						</controls:CardStack>
+					</Border>
 				</StackPanel>
 				<local:CycleGroupsSettingsControl x:Name="CycleGroupsSettingsControl" />
 			</DockPanel>
+
+			<!-- Other apps -->
+			<ScrollViewer x:Name="AppsPage" Style="{StaticResource PageScroller}">
+				<StackPanel Style="{StaticResource PageContent}">
+					<TextBlock Style="{StaticResource PageTitle}" Text="Other apps" />
+					<TextBlock Style="{StaticResource PageSubtitle}" Text="Add other programs and games to your cycle rotation." />
+					<local:CycleAppsSettingsControl x:Name="CycleAppsSettingsControl" />
+				</StackPanel>
+			</ScrollViewer>
 
 			<!-- Clients -->
 			<ScrollViewer x:Name="ClientsPage" Style="{StaticResource PageScroller}">
@@ -451,15 +476,6 @@
 							</controls:SettingRow>
 							<controls:SettingRow Title="Minimize / restore animation" Description="Whether EVE windows animate when they're minimized and restored.">
 								<ComboBox x:Name="AnimationStyleCombo" Width="200" ItemTemplate="{StaticResource AnimationStyleTemplate}" SelectionChanged="OptionChanged_Handler" />
-							</controls:SettingRow>
-						</controls:CardStack>
-					</Border>
-
-					<TextBlock Style="{StaticResource SectionTitle}" Text="Close clients" />
-					<Border Style="{StaticResource Card}">
-						<controls:CardStack>
-							<controls:SettingRow Title="Close all EVE clients" Description="Force-closes every running EVE client. You'll be asked to confirm.">
-								<Button x:Name="CloseAllEveClientsButton" Content="Close all" Style="{StaticResource DangerButton}" Click="CloseAllEveClients_Handler" />
 							</controls:SettingRow>
 						</controls:CardStack>
 					</Border>

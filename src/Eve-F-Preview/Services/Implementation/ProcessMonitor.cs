@@ -14,14 +14,14 @@ namespace EveFPreview.Services
 		#endregion
 
 		#region Private fields
-		private readonly IDictionary<IntPtr, string> _processCache;
+		private readonly IDictionary<IntPtr, IProcessInfo> _processCache;
 		private IProcessInfo _currentProcessInfo;
 		private readonly IThumbnailConfiguration _configuration;
 		#endregion
 
 		public ProcessMonitor(IThumbnailConfiguration configuration)
 		{
-			this._processCache = new Dictionary<IntPtr, string>(512);
+			this._processCache = new Dictionary<IntPtr, IProcessInfo>(512);
 			this._configuration = configuration;
 
 			// This field cannot be initialized properly in constructor
@@ -29,10 +29,11 @@ namespace EveFPreview.Services
 			this._currentProcessInfo = new ProcessInfo(IntPtr.Zero, "");
 		}
 
-		private bool IsMonitoredProcess(string processName)
+		private bool IsMonitoredProcess(string processName, out CycleApp app)
 		{
-			// This is a possible extension point
-			return _configuration.IsExecutableToPreview(processName);
+			app = null;
+			return this._configuration.IsExecutableToPreview(processName)
+				|| this._configuration.TryGetCycleApp(processName, out app);
 		}
 
 		private IProcessInfo GetCurrentProcessInfo()
@@ -62,9 +63,9 @@ namespace EveFPreview.Services
 			ICollection<IProcessInfo> result = new List<IProcessInfo>(this._processCache.Count);
 
 			// TODO Lock list here just in case
-			foreach (KeyValuePair<IntPtr, string> entry in this._processCache)
+			foreach (IProcessInfo entry in this._processCache.Values)
 			{
-				result.Add(new ProcessInfo(entry.Key, entry.Value));
+				result.Add(entry);
 			}
 
 			return result;
@@ -79,45 +80,49 @@ namespace EveFPreview.Services
 			IList<IntPtr> knownProcesses = new List<IntPtr>(this._processCache.Keys);
 			foreach (Process process in Process.GetProcesses())
 			{
-				string processName = process.ProcessName;
-
-				if (!this.IsMonitoredProcess(processName))
+				using (process)
 				{
-					continue;
-				}
-
-				IntPtr mainWindowHandle = process.MainWindowHandle;
-				if (mainWindowHandle == IntPtr.Zero)
-				{
-					continue; // No need to monitor non-visual processes
-				}
-
-				string mainWindowTitle = process.MainWindowTitle.Replace("—", "-");
-				this._processCache.TryGetValue(mainWindowHandle, out string cachedTitle);
-
-				if (cachedTitle == null)
-				{
-					// This is a new process in the list
-					this._processCache.Add(mainWindowHandle, mainWindowTitle);
-					addedProcesses.Add(new ProcessInfo(mainWindowHandle, mainWindowTitle));
-				}
-				else
-				{
-					// This is an already known process
-					if (cachedTitle != mainWindowTitle)
+					if (!this.IsMonitoredProcess(process.ProcessName, out CycleApp app))
 					{
-						this._processCache[mainWindowHandle] = mainWindowTitle;
-						updatedProcesses.Add(new ProcessInfo(mainWindowHandle, mainWindowTitle));
+						continue;
 					}
 
-					knownProcesses.Remove(mainWindowHandle);
+					IntPtr mainWindowHandle = process.MainWindowHandle;
+					if (mainWindowHandle == IntPtr.Zero)
+					{
+						continue; // No need to monitor non-visual processes
+					}
+
+					// An added app goes by its executable name: its window title changes with whatever it
+					// shows, and every per-client setting (position, cycle group, ...) is keyed by title.
+					string mainWindowTitle = app != null ? app.Executable : process.MainWindowTitle.Replace("—", "-");
+					this._processCache.TryGetValue(mainWindowHandle, out IProcessInfo cached);
+
+					if (cached == null)
+					{
+						// This is a new process in the list
+						var info = new ProcessInfo(mainWindowHandle, mainWindowTitle, app != null);
+						this._processCache.Add(mainWindowHandle, info);
+						addedProcesses.Add(info);
+					}
+					else
+					{
+						// This is an already known process
+						if (cached.Title != mainWindowTitle)
+						{
+							var info = new ProcessInfo(mainWindowHandle, mainWindowTitle, app != null);
+							this._processCache[mainWindowHandle] = info;
+							updatedProcesses.Add(info);
+						}
+
+						knownProcesses.Remove(mainWindowHandle);
+					}
 				}
 			}
 
 			foreach (IntPtr index in knownProcesses)
 			{
-				string title = this._processCache[index];
-				removedProcesses.Add(new ProcessInfo(index, title));
+				removedProcesses.Add(this._processCache[index]);
 				this._processCache.Remove(index);
 			}
 		}

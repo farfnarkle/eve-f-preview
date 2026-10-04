@@ -103,6 +103,7 @@ namespace EveFPreview.Configuration.Implementation
 			this.PortraitThumbnailsDirectory = string.Empty;
 
 			this.ExecutablesToPreview = new List<string> { "exefile" };
+			this.CycleApps = new List<CycleApp>();
 
 			this.MinimizeToTray = false;
 			this.StartMinimized = false;
@@ -202,6 +203,9 @@ namespace EveFPreview.Configuration.Implementation
 
 		[JsonProperty("CycleGroupExclusions")]
 		public Dictionary<string, bool> CycleGroupExclusions { get; set; }
+
+		[JsonProperty("CycleApps")]
+		public List<CycleApp> CycleApps { get; set; }
 
 		[JsonProperty("CycleGroup1ForwardHotkeys")]
 		public List<string> CycleGroup1ForwardHotkeys { get; set; }
@@ -629,6 +633,12 @@ namespace EveFPreview.Configuration.Implementation
 			return this.ExecutablesToPreview.Any(s => s.Equals(processName, StringComparison.OrdinalIgnoreCase));
 		}
 
+		public bool TryGetCycleApp(string processName, out CycleApp app)
+		{
+			app = this.CycleApps.FirstOrDefault(x => string.Equals(x.Executable, processName, StringComparison.OrdinalIgnoreCase));
+			return app != null;
+		}
+
 		public bool IsThumbnailDisabled(string currentClient)
 		{
 			return this.DisableThumbnail.TryGetValue(currentClient, out bool isDisabled) && isDisabled;
@@ -713,6 +723,8 @@ namespace EveFPreview.Configuration.Implementation
 			this.DisableThumbnail ??= defaults.Value.DisableThumbnail;
 			this.PriorityClients ??= defaults.Value.PriorityClients;
 			this.ExecutablesToPreview ??= defaults.Value.ExecutablesToPreview;
+			this.CycleApps ??= defaults.Value.CycleApps;
+			this.CycleApps.RemoveAll(x => x == null || string.IsNullOrWhiteSpace(x.Executable));
 		}
 
 		private static int ApplyRestrictions(int value, int minimum, int maximum)

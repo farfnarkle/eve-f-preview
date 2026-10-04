@@ -288,6 +288,7 @@ namespace EveFPreview.Presenters
 			this.View.SetGlobalShortcutSettings(this.CreateGlobalShortcutSettingsFromConfiguration());
 			this.View.SetSettingsSyncConfiguration(this._configuration, () => this._configurationStorage.Save());
 			this.View.SetCycleGroupsConfiguration(this._configuration, () => this._configurationStorage.Save());
+			this.View.SetCycleAppsConfiguration(this._configuration, () => this._configurationStorage.Save());
 		}
 
 		private GlobalShortcutSettings CreateGlobalShortcutSettingsFromConfiguration()

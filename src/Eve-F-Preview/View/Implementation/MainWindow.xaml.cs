@@ -440,6 +440,12 @@ namespace EveFPreview.View
 			this.CycleGroupsSettingsControl.SetConfiguration(configuration);
 		}
 
+		public void SetCycleAppsConfiguration(IThumbnailConfiguration configuration, Action persistConfiguration = null)
+		{
+			this.CycleAppsSettingsControl.PersistConfiguration = persistConfiguration;
+			this.CycleAppsSettingsControl.SetConfiguration(configuration);
+		}
+
 		public GlobalShortcutSettings GetGlobalShortcutSettings()
 		{
 			return this.ShortcutsSettingsControl.GetSettings();

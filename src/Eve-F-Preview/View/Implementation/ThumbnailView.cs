@@ -167,6 +167,8 @@ namespace EveFPreview.View
 
 		public IntPtr Id { get; set; }
 
+		public bool IsExternalApp { get; set; }
+
 		/// <summary>This thumbnail window's own HWND.</summary>
 		protected IntPtr Handle => this._handle;
 
@@ -245,7 +247,12 @@ namespace EveFPreview.View
 
 		public void SetPreventPreviews()
 		{
-			if (this._config.PerClientPreventPreviews.TryGetValue(this.Title, out bool perClientPrevent))
+			if (this.IsExternalApp)
+			{
+				// There's no character portrait to show instead of an app's live preview.
+				this._preventPreviewsEnabled = false;
+			}
+			else if (this._config.PerClientPreventPreviews.TryGetValue(this.Title, out bool perClientPrevent))
 			{
 				this._preventPreviewsEnabled = perClientPrevent;
 			}
