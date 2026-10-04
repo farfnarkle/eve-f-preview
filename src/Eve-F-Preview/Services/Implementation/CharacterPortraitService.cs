@@ -35,6 +35,10 @@ namespace EveFPreview.Services.Implementation
 		private readonly object _logSync = new object();
 		private readonly SemaphoreSlim _refreshGate = new SemaphoreSlim(1, 1);
 		// Written on the UI thread as clients are detected, read by the download tasks.
+		// Titles whose stored character id ESI reports as deleted, found by the refresh in progress.
+		private readonly ConcurrentDictionary<string, byte> _deletedCharacterTitles =
+			new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
+
 		private readonly ConcurrentDictionary<string, long> _launchCharacterIds =
 			new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
@@ -89,6 +93,7 @@ namespace EveFPreview.Services.Implementation
 			await this._refreshGate.WaitAsync(cancellationToken).ConfigureAwait(false);
 			try
 			{
+				this._deletedCharacterTitles.Clear();
 				string thumbsDirectory = this.EnsureThumbsDirectory();
 				this.Log(forceRedownload
 					? $"Manual refresh: re-downloading {titles.Count} portrait(s)."
@@ -112,6 +117,14 @@ namespace EveFPreview.Services.Implementation
 					foreach (var result in results.Where(r => r.Path != null))
 					{
 						this._configuration.ClientPortraitPaths[result.Title] = result.Path;
+					}
+
+					// A deleted character's portrait entry is the only thing that keeps its title in the
+					// portrait list (and looked up at every start). If a new character later takes the
+					// name, its window gets a portrait by the usual name search.
+					foreach (string title in this._deletedCharacterTitles.Keys)
+					{
+						this._configuration.ClientPortraitPaths.Remove(title);
 					}
 
 					this._configurationStorage.Save();
@@ -243,7 +256,13 @@ namespace EveFPreview.Services.Implementation
 				}
 
 				long? characterId = await this.TryGetVerifiedLaunchCharacterIdAsync(windowTitle, characterName, cancellationToken).ConfigureAwait(false)
-					?? await this.ResolveCharacterIdAsync(characterName, cancellationToken).ConfigureAwait(false);
+					?? await this.ResolveCharacterIdAsync(characterName, cancellationToken).ConfigureAwait(false)
+					?? await this.TryGetStoredCharacterIdAsync(windowTitle, cancellationToken).ConfigureAwait(false);
+				if (characterId == null && this._deletedCharacterTitles.ContainsKey(windowTitle))
+				{
+					return null; // Already logged; the entry is dropped once this refresh finishes.
+				}
+
 				if (characterId == null)
 				{
 					this.Log($"Failed '{windowTitle}': could not resolve ESI character id for '{characterName}'.");
@@ -322,6 +341,47 @@ namespace EveFPreview.Services.Implementation
 				|| (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested)) // HttpClient timeout
 			{
 				this.Log($"Could not verify launch id {launchCharacterId} for '{windowTitle}': {ex.Message}");
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// The name search finds nobody when a character has been renamed or deleted. A title that had a
+		/// portrait before still has its character id (the portrait's file name), so ask ESI about that
+		/// id: renamed - use it; deleted - remember the title, so its stale portrait entry is dropped and
+		/// the character stops being looked up (and failing) at every start. Any other answer, or no
+		/// answer, changes nothing and the next refresh tries again.
+		/// </summary>
+		private async Task<long?> TryGetStoredCharacterIdAsync(string windowTitle, CancellationToken cancellationToken)
+		{
+			if (!this._configuration.TryGetCharacterId(windowTitle, out long storedCharacterId))
+			{
+				return null;
+			}
+
+			try
+			{
+				string url = $"https://esi.evetech.net/latest/characters/{storedCharacterId}/?datasource=tranquility";
+				using HttpResponseMessage response = await SharedHttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+				if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+				{
+					this._deletedCharacterTitles[windowTitle] = 0;
+					this.Log($"'{windowTitle}': character {storedCharacterId} has been deleted (ESI 404); forgetting its portrait so it isn't looked up again.");
+					return null;
+				}
+
+				if (!response.IsSuccessStatusCode)
+				{
+					return null;
+				}
+
+				this.Log($"'{windowTitle}': nobody has that name any more (renamed?); using its stored character id {storedCharacterId}.");
+				return storedCharacterId;
+			}
+			catch (Exception ex) when (ex is HttpRequestException
+				|| (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested)) // HttpClient timeout
+			{
+				this.Log($"Could not check stored character id {storedCharacterId} for '{windowTitle}': {ex.Message}");
 				return null;
 			}
 		}
