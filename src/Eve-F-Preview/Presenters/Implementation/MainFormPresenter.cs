@@ -615,7 +615,7 @@ namespace EveFPreview.Presenters
 
 		private async void CloseAllEveClients()
 		{
-			const string text = "Close all EVE clients?\n\nEach client is asked to close first; any still open after 5 seconds is force-closed.";
+			const string text = "Force-close all EVE clients now?";
 			const string caption = "Close all EVE clients";
 			MessageBoxResult confirm = this.View is System.Windows.Window owner && owner.IsVisible
 				? MessageBox.Show(owner, text, caption, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No)

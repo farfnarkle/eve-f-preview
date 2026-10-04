@@ -34,7 +34,7 @@ The thumbnails themselves were already cheap: Windows' compositor spends about 0
 | A pop-up says settings can't be saved | C2 is reporting a real problem; see `EVE-F-Preview.log` | `0b11318` |
 | Imported config shows no portraits at first | S1 (they re-download at startup) | `2093052` |
 | Settings Sync backups look different | C3 | `b261031` |
-| "Close all EVE clients" behaves differently | C4 | `f758362` |
+| "Close all EVE clients" behaves differently | C4, since undone (see Follow-ups) | `f758362`, then "Close all EVE clients: force-close at once again" |
 | `deploy.bat` fails where it used to succeed | L6 | `2745896` |
 
 ---
@@ -181,6 +181,10 @@ The risk was low overall. Already fine: the update check and link opening (web l
   - **Renamed:** the stored ID is used to download the portrait.
   - **Verified:** tested against EVE's API. On your config, X Tyrannos (2123762234, "Character has been deleted!") was handled on the first start.
   - **If it breaks:** a portrait missing for a character that does exist.
+- **C4 undone, so Close all EVE clients force-closes again** (commit "Close all EVE clients: force-close at once again").
+  - **Why:** asking a logged-in client to close makes EVE show its own "quit?" prompt in game. The clients stayed open until the 5-second force-close anyway, only later and with a prompt left on screen.
+  - **Now:** every EVE client is killed immediately, as before C4.
+  - **Verified:** on stand-in windows, both were force-closed within 0.1 s.
 
 ## Changed outside git (can't be undone with `git revert`)
 

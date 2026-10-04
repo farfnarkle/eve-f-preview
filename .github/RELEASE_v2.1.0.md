@@ -11,7 +11,7 @@ Cycle to other programs and games, use numbered group hotkeys alongside dynamic 
 
 ## Changed
 
-- **Close all EVE clients** now asks each client to close, and only force-closes those still open 5 seconds later. It has moved to the General page.
+- **Close all EVE clients** has moved to the General page.
 - **The Dynamic cycle group switch** has moved to the top of the Cycle groups page.
 - **Edits on the Cycle groups page** take effect straight away, without a restart.
 - **The app no longer sends an Alt key press** when Windows refuses a window switch. That key press could reach the game. The README now explains exactly what input the app uses to switch windows.
