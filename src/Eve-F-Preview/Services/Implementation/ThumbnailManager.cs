@@ -73,7 +73,7 @@ namespace EveFPreview.Services
 		private IntPtr _foregroundWinEventHook;
 		private User32NativeMethods.WinEventProc _foregroundWinEventDelegate;
 		private IntPtr _thumbnailDragHandle;
-		private readonly Dictionary<IntPtr, int> _windowAccountIds;
+		private readonly Dictionary<IntPtr, long> _windowAccountIds;
 		// Windows whose launch character id has already been handed to the portrait service.
 		private readonly HashSet<IntPtr> _launchCharacterIdBound;
 		private DispatcherTimer _autoSettingsSyncDelayTimer;
@@ -105,7 +105,7 @@ namespace EveFPreview.Services
 			this._enqueuedLocationChangeNotification = (IntPtr.Zero, null, null, Point.Empty, -1);
 
 			this._thumbnailViews = new Dictionary<IntPtr, IThumbnailView>();
-			this._windowAccountIds = new Dictionary<IntPtr, int>();
+			this._windowAccountIds = new Dictionary<IntPtr, long>();
 			this._launchCharacterIdBound = new HashSet<IntPtr>();
 
 			//  DispatcherTimer setup
@@ -1301,7 +1301,7 @@ namespace EveFPreview.Services
 				// Reads the chat logs in the background; SystemsChanged brings any news straight back.
 				this._locationService.RequestRefresh(this._thumbnailViews.Values
 					.Where(view => !view.IsExternalApp && view.Title != DEFAULT_CLIENT_TITLE)
-					.Select(view => (view.Title, this._configuration.TryGetCharacterId(view.Title, out int characterId) ? characterId : 0))
+					.Select(view => (view.Title, this._configuration.TryGetCharacterId(view.Title, out long characterId) ? characterId : 0L))
 					.ToList());
 			}
 
@@ -1437,8 +1437,7 @@ namespace EveFPreview.Services
 			if (this._configuration.ShowSystemNameOnThumbnail
 				&& view.Title != DEFAULT_CLIENT_TITLE)
 			{
-				int characterId = 0;
-				this._configuration.TryGetCharacterId(view.Title, out characterId);
+				this._configuration.TryGetCharacterId(view.Title, out long characterId);
 				if (this._locationService.TryGetSystem(view.Title, characterId, out string systemName))
 				{
 					view.SetSystemName(systemName);
@@ -2271,7 +2270,7 @@ namespace EveFPreview.Services
 			Point fallback = this._configuration.GetThumbnailLocation(view.Title, activeClient, defaultLocation);
 
 			if (!this._configuration.EnableAccountBasedThumbnailPositioning
-				|| !this.TryResolveAccountId(view, out int accountId))
+				|| !this.TryResolveAccountId(view, out long accountId))
 			{
 				return fallback;
 			}
@@ -2307,7 +2306,7 @@ namespace EveFPreview.Services
 		private void PersistThumbnailLocation(IThumbnailView view)
 		{
 			if (this._configuration.EnableAccountBasedThumbnailPositioning
-				&& this.TryResolveAccountId(view, out int accountId))
+				&& this.TryResolveAccountId(view, out long accountId))
 			{
 				this._configuration.SetAccountThumbnailLocation(accountId, view.ThumbnailLocation);
 				return;
@@ -2322,7 +2321,7 @@ namespace EveFPreview.Services
 		private void ApplyAccountGroupedLocation(IThumbnailView movedView)
 		{
 			if (!this._configuration.EnableAccountBasedThumbnailPositioning
-				|| !this.TryResolveAccountId(movedView, out int accountId))
+				|| !this.TryResolveAccountId(movedView, out long accountId))
 			{
 				return;
 			}
@@ -2334,7 +2333,7 @@ namespace EveFPreview.Services
 			{
 				IThumbnailView other = entry.Value;
 				if (other.Id == movedView.Id
-					|| !this.TryResolveAccountId(other, out int otherAccountId)
+					|| !this.TryResolveAccountId(other, out long otherAccountId)
 					|| otherAccountId != accountId)
 				{
 					continue;
@@ -2348,7 +2347,7 @@ namespace EveFPreview.Services
 
 		private void UpdateClientMetadata(IntPtr handle, string title)
 		{
-			if (!EveClientMetadataReader.TryReadMetadata(handle, out int accountId, out int characterId))
+			if (!EveClientMetadataReader.TryReadMetadata(handle, out long accountId, out long characterId))
 			{
 				return;
 			}
@@ -2378,7 +2377,7 @@ namespace EveFPreview.Services
 			}
 		}
 
-		private bool TryResolveAccountId(IThumbnailView view, out int accountId)
+		private bool TryResolveAccountId(IThumbnailView view, out long accountId)
 		{
 			accountId = 0;
 
@@ -2387,7 +2386,7 @@ namespace EveFPreview.Services
 				return true;
 			}
 
-			if (this._configuration.TryGetCharacterId(view.Title, out int characterId)
+			if (this._configuration.TryGetCharacterId(view.Title, out long characterId)
 				&& this._configuration.TryGetAccountIdForCharacter(characterId, out accountId))
 			{
 				return true;

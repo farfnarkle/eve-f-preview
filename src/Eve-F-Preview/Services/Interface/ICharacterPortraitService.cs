@@ -28,7 +28,7 @@ namespace EveFPreview.Services
 		/// given window title. Portrait downloads use it instead of a name search once ESI confirms
 		/// the id belongs to that name.
 		/// </summary>
-		void SetLaunchCharacterId(string windowTitle, int characterId);
+		void SetLaunchCharacterId(string windowTitle, long characterId);
 
 		IReadOnlyList<string> GetConfiguredClientTitles();
 

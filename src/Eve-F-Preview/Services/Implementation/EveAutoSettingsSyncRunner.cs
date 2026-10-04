@@ -283,7 +283,7 @@ namespace EveFPreview.Services
 
 			foreach (long destinationCharacterId in configuration.AutoSettingsSyncDestinationCharacterIds)
 			{
-				configuration.TryGetAccountIdForCharacter((int)destinationCharacterId, out int destinationAccountId);
+				configuration.TryGetAccountIdForCharacter(destinationCharacterId, out long destinationAccountId);
 				bool hasDestinationOverride = configuration.AutoSettingsSyncChannelKeysToKeepByDestination != null
 					&& configuration.AutoSettingsSyncChannelKeysToKeepByDestination.ContainsKey(destinationCharacterId.ToString());
 
@@ -360,7 +360,7 @@ namespace EveFPreview.Services
 
 			foreach (KeyValuePair<string, string> entry in configuration.ClientPortraitPaths)
 			{
-				if (configuration.TryGetCharacterId(entry.Key, out int characterId)
+				if (configuration.TryGetCharacterId(entry.Key, out long characterId)
 					&& characterId == configuration.AutoSettingsSyncSourceCharacterId)
 				{
 					return StripEvePrefix(entry.Key);

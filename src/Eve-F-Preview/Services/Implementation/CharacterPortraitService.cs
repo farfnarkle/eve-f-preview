@@ -35,8 +35,8 @@ namespace EveFPreview.Services.Implementation
 		private readonly object _logSync = new object();
 		private readonly SemaphoreSlim _refreshGate = new SemaphoreSlim(1, 1);
 		// Written on the UI thread as clients are detected, read by the download tasks.
-		private readonly ConcurrentDictionary<string, int> _launchCharacterIds =
-			new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+		private readonly ConcurrentDictionary<string, long> _launchCharacterIds =
+			new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
 		public CharacterPortraitService(IThumbnailConfiguration configuration, IConfigurationStorage configurationStorage, IMediator mediator)
 		{
@@ -127,7 +127,7 @@ namespace EveFPreview.Services.Implementation
 			}
 		}
 
-		public void SetLaunchCharacterId(string windowTitle, int characterId)
+		public void SetLaunchCharacterId(string windowTitle, long characterId)
 		{
 			if (characterId > 0 && this.IsPortraitClientTitle(windowTitle))
 			{
@@ -242,7 +242,7 @@ namespace EveFPreview.Services.Implementation
 					return null;
 				}
 
-				int? characterId = await this.TryGetVerifiedLaunchCharacterIdAsync(windowTitle, characterName, cancellationToken).ConfigureAwait(false)
+				long? characterId = await this.TryGetVerifiedLaunchCharacterIdAsync(windowTitle, characterName, cancellationToken).ConfigureAwait(false)
 					?? await this.ResolveCharacterIdAsync(characterName, cancellationToken).ConfigureAwait(false);
 				if (characterId == null)
 				{
@@ -278,9 +278,9 @@ namespace EveFPreview.Services.Implementation
 		/// after the clients) the window may be showing someone else - hence the check. Returns null
 		/// to fall back to the name search.
 		/// </summary>
-		private async Task<int?> TryGetVerifiedLaunchCharacterIdAsync(string windowTitle, string characterName, CancellationToken cancellationToken)
+		private async Task<long?> TryGetVerifiedLaunchCharacterIdAsync(string windowTitle, string characterName, CancellationToken cancellationToken)
 		{
-			if (!this._launchCharacterIds.TryGetValue(windowTitle, out int launchCharacterId))
+			if (!this._launchCharacterIds.TryGetValue(windowTitle, out long launchCharacterId))
 			{
 				return null;
 			}
@@ -320,7 +320,7 @@ namespace EveFPreview.Services.Implementation
 			}
 		}
 
-		private async Task<int?> ResolveCharacterIdAsync(string characterName, CancellationToken cancellationToken)
+		private async Task<long?> ResolveCharacterIdAsync(string characterName, CancellationToken cancellationToken)
 		{
 			using var request = new HttpRequestMessage(HttpMethod.Post, "https://esi.evetech.net/latest/universe/ids/?datasource=tranquility")
 			{
@@ -348,7 +348,7 @@ namespace EveFPreview.Services.Implementation
 				if (entry.TryGetProperty("name", out JsonElement nameElement)
 					&& string.Equals(nameElement.GetString(), characterName, StringComparison.OrdinalIgnoreCase))
 				{
-					return idElement.GetInt32();
+					return idElement.GetInt64();
 				}
 			}
 
@@ -356,7 +356,7 @@ namespace EveFPreview.Services.Implementation
 			return null;
 		}
 
-		private async Task<string> GetPortraitUrlAsync(int characterId, CancellationToken cancellationToken)
+		private async Task<string> GetPortraitUrlAsync(long characterId, CancellationToken cancellationToken)
 		{
 			string url = $"https://esi.evetech.net/latest/characters/{characterId}/portrait/?datasource=tranquility";
 			using HttpResponseMessage response = await SharedHttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);

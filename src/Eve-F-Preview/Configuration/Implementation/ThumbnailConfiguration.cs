@@ -91,7 +91,7 @@ namespace EveFPreview.Configuration.Implementation
 			this.PerClientLayout = new Dictionary<string, Dictionary<string, Point>>();
 			this.FlatLayout = new Dictionary<string, Point>();
 			this.AccountThumbnailLayout = new Dictionary<string, Point>();
-			this.CharacterAccountMap = new Dictionary<string, int>();
+			this.CharacterAccountMap = new Dictionary<string, long>();
 			this.ClientLayout = new Dictionary<string, ClientLayout>();
 			this.ClientHotkey = new Dictionary<string, string>();
 			this.MinimizeAllClientsHotkeys = new List<string> { "Control+F22" };
@@ -447,7 +447,7 @@ namespace EveFPreview.Configuration.Implementation
 		[JsonProperty]
 		private Dictionary<string, Point> AccountThumbnailLayout { get; set; }
 		[JsonProperty]
-		private Dictionary<string, int> CharacterAccountMap { get; set; }
+		private Dictionary<string, long> CharacterAccountMap { get; set; }
 		[JsonProperty]
 		private Dictionary<string, ClientLayout> ClientLayout { get; set; }
 		[JsonProperty]
@@ -520,18 +520,18 @@ namespace EveFPreview.Configuration.Implementation
 			layoutSource[currentClient] = location;
 		}
 
-		public Point GetAccountThumbnailLocation(int accountId, Point defaultLocation)
+		public Point GetAccountThumbnailLocation(long accountId, Point defaultLocation)
 		{
 			string accountKey = accountId.ToString();
 			return this.AccountThumbnailLayout.TryGetValue(accountKey, out Point location) ? location : defaultLocation;
 		}
 
-		public void SetAccountThumbnailLocation(int accountId, Point location)
+		public void SetAccountThumbnailLocation(long accountId, Point location)
 		{
 			this.AccountThumbnailLayout[accountId.ToString()] = location;
 		}
 
-		public bool TryGetCharacterId(string windowTitle, out int characterId)
+		public bool TryGetCharacterId(string windowTitle, out long characterId)
 		{
 			characterId = 0;
 
@@ -543,10 +543,10 @@ namespace EveFPreview.Configuration.Implementation
 			}
 
 			string fileName = System.IO.Path.GetFileNameWithoutExtension(portraitPath);
-			return int.TryParse(fileName, out characterId) && characterId > 0;
+			return long.TryParse(fileName, out characterId) && characterId > 0;
 		}
 
-		public bool TryGetAccountIdForCharacter(int characterId, out int accountId)
+		public bool TryGetAccountIdForCharacter(long characterId, out long accountId)
 		{
 			accountId = 0;
 			return this.CharacterAccountMap != null
@@ -554,7 +554,7 @@ namespace EveFPreview.Configuration.Implementation
 				&& accountId > 0;
 		}
 
-		public void RecordCharacterAccount(int characterId, int accountId)
+		public void RecordCharacterAccount(long characterId, long accountId)
 		{
 			if (characterId <= 0 || accountId <= 0)
 			{
@@ -562,7 +562,7 @@ namespace EveFPreview.Configuration.Implementation
 			}
 
 			string characterKey = characterId.ToString();
-			if (this.CharacterAccountMap.TryGetValue(characterKey, out int existingAccountId) && existingAccountId != accountId)
+			if (this.CharacterAccountMap.TryGetValue(characterKey, out long existingAccountId) && existingAccountId != accountId)
 			{
 				// Character was transferred or relogged under a different account; keep the first mapping.
 				return;
@@ -571,7 +571,7 @@ namespace EveFPreview.Configuration.Implementation
 			this.CharacterAccountMap[characterKey] = accountId;
 		}
 
-		public void SetCharacterAccount(int characterId, int accountId)
+		public void SetCharacterAccount(long characterId, long accountId)
 		{
 			if (characterId <= 0)
 			{

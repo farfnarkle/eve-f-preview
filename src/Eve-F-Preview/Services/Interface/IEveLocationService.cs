@@ -14,7 +14,7 @@ namespace EveFPreview.Services
 		/// at once (a pass that's still running isn't doubled up). <see cref="SystemsChanged"/> fires,
 		/// on a worker thread, when it finds a client in a new system.
 		/// </summary>
-		void RequestRefresh(IEnumerable<(string WindowTitle, int CharacterId)> clients);
+		void RequestRefresh(IEnumerable<(string WindowTitle, long CharacterId)> clients);
 
 		/// <summary>Raised on a worker thread when a refresh pass found a changed system.</summary>
 		event Action SystemsChanged;
@@ -23,6 +23,6 @@ namespace EveFPreview.Services
 		/// Looks up the last known system for a client window title (e.g. "EVE - Farfnarkle")
 		/// and optional character id from portrait cache.
 		/// </summary>
-		bool TryGetSystem(string windowTitle, int characterId, out string systemName);
+		bool TryGetSystem(string windowTitle, long characterId, out string systemName);
 	}
 }

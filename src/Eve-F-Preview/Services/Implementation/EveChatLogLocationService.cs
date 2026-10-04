@@ -69,12 +69,12 @@ namespace EveFPreview.Services.Implementation
 
 		public event Action SystemsChanged;
 
-		public void RequestRefresh(IEnumerable<(string WindowTitle, int CharacterId)> clients)
+		public void RequestRefresh(IEnumerable<(string WindowTitle, long CharacterId)> clients)
 		{
 			// Taken now, on the caller's thread: the worker must not touch the caller's collections.
 			var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			var characterIds = new HashSet<long>();
-			foreach ((string windowTitle, int characterId) in clients)
+			foreach ((string windowTitle, long characterId) in clients)
 			{
 				if (EveChatLogLocationService.TryGetCharacterName(windowTitle, out string name))
 				{
@@ -118,7 +118,7 @@ namespace EveFPreview.Services.Implementation
 			});
 		}
 
-		public bool TryGetSystem(string windowTitle, int characterId, out string systemName)
+		public bool TryGetSystem(string windowTitle, long characterId, out string systemName)
 		{
 			if (characterId > 0
 				&& this._systemByCharacterId.TryGetValue(characterId, out systemName)

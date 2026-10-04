@@ -162,14 +162,14 @@ namespace EveFPreview.Configuration
 		ZoomAnchor GetZoomAnchor(string currentClient, ZoomAnchor defaultZoomAnchor);
 		void SetThumbnailLocation(string currentClient, string activeClient, Point location);
 
-		Point GetAccountThumbnailLocation(int accountId, Point defaultLocation);
-		void SetAccountThumbnailLocation(int accountId, Point location);
-		bool TryGetCharacterId(string windowTitle, out int characterId);
-		bool TryGetAccountIdForCharacter(int characterId, out int accountId);
-		void RecordCharacterAccount(int characterId, int accountId);
+		Point GetAccountThumbnailLocation(long accountId, Point defaultLocation);
+		void SetAccountThumbnailLocation(long accountId, Point location);
+		bool TryGetCharacterId(string windowTitle, out long characterId);
+		bool TryGetAccountIdForCharacter(long characterId, out long accountId);
+		void RecordCharacterAccount(long characterId, long accountId);
 
 		/// <summary>Explicit user override for a character's account ID (e.g. Settings Sync "Set account ID…"). Unlike RecordCharacterAccount, always takes effect. Pass accountId &lt;= 0 to clear.</summary>
-		void SetCharacterAccount(int characterId, int accountId);
+		void SetCharacterAccount(long characterId, long accountId);
 
 		ClientLayout GetClientLayout(string currentClient);
 		void SetClientLayout(string currentClient, ClientLayout layout);

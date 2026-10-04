@@ -17,8 +17,8 @@ namespace EveFPreview.Services
 		{
 			public uint ProcessId;
 			public bool Success;
-			public int AccountId;
-			public int CharacterId;
+			public long AccountId;
+			public long CharacterId;
 		}
 
 		private static readonly object Sync = new object();
@@ -36,7 +36,7 @@ namespace EveFPreview.Services
 			@"::(\d+):(\d+)\s*$",
 			RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-		public static bool TryReadMetadata(IntPtr mainWindowHandle, out int accountId, out int characterId)
+		public static bool TryReadMetadata(IntPtr mainWindowHandle, out long accountId, out long characterId)
 		{
 			accountId = 0;
 			characterId = 0;
@@ -96,7 +96,7 @@ namespace EveFPreview.Services
 			}
 		}
 
-		internal static bool TryParseCommandLine(string commandLine, out int accountId, out int characterId)
+		internal static bool TryParseCommandLine(string commandLine, out long accountId, out long characterId)
 		{
 			accountId = 0;
 			characterId = 0;
@@ -113,9 +113,10 @@ namespace EveFPreview.Services
 					string decoded = Encoding.UTF8.GetString(Convert.FromBase64String(launcherDataMatch.Groups[1].Value));
 					if (LauncherDataPayloadPattern.Match(decoded) is Match payloadMatch && payloadMatch.Success)
 					{
-						accountId = int.Parse(payloadMatch.Groups[1].Value);
-						characterId = int.Parse(payloadMatch.Groups[2].Value);
-						return accountId > 0 && characterId > 0;
+						// TryParse: an id too large for a long must not throw (this runs on the UI thread).
+						return long.TryParse(payloadMatch.Groups[1].Value, out accountId)
+							&& long.TryParse(payloadMatch.Groups[2].Value, out characterId)
+							&& accountId > 0 && characterId > 0;
 					}
 				}
 				catch (FormatException)
@@ -127,7 +128,7 @@ namespace EveFPreview.Services
 			}
 
 			if (AutoSelectCharacterPattern.Match(commandLine) is Match autoSelectMatch && autoSelectMatch.Success
-				&& int.TryParse(autoSelectMatch.Groups[1].Value, out characterId))
+				&& long.TryParse(autoSelectMatch.Groups[1].Value, out characterId))
 			{
 				return characterId > 0;
 			}

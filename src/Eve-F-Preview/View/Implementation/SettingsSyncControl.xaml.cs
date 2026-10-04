@@ -191,8 +191,8 @@ namespace EveFPreview.View
 				foreach (long characterId in idsInProfile)
 				{
 					namesById.TryGetValue(characterId, out string displayName);
-					int accountId = 0;
-					this._configuration?.TryGetAccountIdForCharacter((int)characterId, out accountId);
+					long accountId = 0;
+					this._configuration?.TryGetAccountIdForCharacter(characterId, out accountId);
 					this._characters.Add(new SettingsSyncCharacterEntry
 					{
 						DisplayName = string.IsNullOrEmpty(displayName) ? "Character " + characterId : displayName,
@@ -256,7 +256,7 @@ namespace EveFPreview.View
 
 			foreach (KeyValuePair<string, string> entry in this._configuration.ClientPortraitPaths)
 			{
-				if (!this._configuration.TryGetCharacterId(entry.Key, out int characterId) || characterId <= 0)
+				if (!this._configuration.TryGetCharacterId(entry.Key, out long characterId) || characterId <= 0)
 				{
 					continue;
 				}
@@ -313,7 +313,7 @@ namespace EveFPreview.View
 				return;
 			}
 
-			this._configuration.SetCharacterAccount((int)selected.CharacterId, dialog.AccountId);
+			this._configuration.SetCharacterAccount(selected.CharacterId, dialog.AccountId);
 			this.PersistConfiguration?.Invoke();
 			this.RefreshCharacterList();
 		}

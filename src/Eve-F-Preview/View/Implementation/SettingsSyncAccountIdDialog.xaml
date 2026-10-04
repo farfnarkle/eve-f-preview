@@ -20,7 +20,7 @@
 		<StackPanel Margin="24,20,24,0">
 			<TextBlock Text="Account ID" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,6" />
 			<TextBlock x:Name="PromptText" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
-			<controls:NumericUpDown x:Name="AccountIdInput" Width="Auto" HorizontalAlignment="Stretch" Margin="0,14,0,0" Minimum="0" Maximum="2147483647" />
+			<controls:NumericUpDown x:Name="AccountIdInput" Width="Auto" HorizontalAlignment="Stretch" Margin="0,14,0,0" Minimum="0" Maximum="9223372036854775807" />
 		</StackPanel>
 		<Border Margin="0,22,0,0" Padding="24,16" Background="{DynamicResource NavBackgroundBrush}"
 		        BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0">
