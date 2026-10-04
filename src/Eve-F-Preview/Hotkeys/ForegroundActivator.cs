@@ -16,7 +16,10 @@ namespace EveFPreview.UI.Hotkeys
 	/// This claims an unused virtual key (0xE8, "unassigned" in the VK table) as a real RegisterHotKey
 	/// binding across every modifier combination, then "presses" it via keybd_event immediately before
 	/// activating - borrowing the grant that a genuine WM_HOTKEY handler gets. Same trick EVE-X Preview
-	/// uses for the same problem.
+	/// uses for the same problem. Windows hands the press to us as WM_HOTKEY instead of to the window in
+	/// front; only the release of that key, which no program uses, can reach it. The press is only sent
+	/// when the combination of modifiers currently held down is one we registered, so the press itself
+	/// never falls through to the game. No other input is ever synthesized.
 	///
 	/// Requests are served one at a time from a queue instead of a single shared slot: firing several
 	/// synthetic presses back-to-back let one request's press arrive after another request had already
@@ -149,7 +152,9 @@ namespace EveFPreview.UI.Hotkeys
 		/// stopping as soon as the real foreground window matches. A plain SetForegroundWindow can
 		/// still be refused (foreground lock, or the previous foreground thread owning input), so a
 		/// single failed attempt used to leave the thumbnail/indicator advanced with the client
-		/// not actually swapped.
+		/// not actually swapped. A switch refused even so is reported as failed, and the caller puts
+		/// the highlight back on the real foreground client. (There used to be a third step that
+		/// tapped Alt to lift the foreground lock; it was removed because that tap reached the game.)
 		/// </summary>
 		private static bool TryBringToForeground(IntPtr handle)
 		{
@@ -181,16 +186,6 @@ namespace EveFPreview.UI.Hotkeys
 					User32NativeMethods.AttachThreadInput(currentThread, foregroundThread, false);
 				}
 			}
-
-			if (WaitForForeground(handle))
-			{
-				return true;
-			}
-
-			// Last resort: a bare Alt tap is the classic way to lift the foreground lock.
-			User32NativeMethods.keybd_event(User32NativeMethods.VK_MENU, 0, 0, UIntPtr.Zero);
-			User32NativeMethods.keybd_event(User32NativeMethods.VK_MENU, 0, User32NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
-			User32NativeMethods.SetForegroundWindow(handle);
 
 			return WaitForForeground(handle);
 		}
@@ -246,6 +241,14 @@ namespace EveFPreview.UI.Hotkeys
 
 		private static void FireSyntheticPress()
 		{
+			if (!ForegroundActivator.IsHeldModifierComboRegistered())
+			{
+				// Another program owns this exact combination (or registration failed), so the press would
+				// go to the window in front instead of to us. Don't send it; try the switch without the grant.
+				System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(new Action(ForegroundActivator.OnHotkeyFired));
+				return;
+			}
+
 			User32NativeMethods.keybd_event(VirtualKeyCode, 0, 0, UIntPtr.Zero);
 			User32NativeMethods.keybd_event(VirtualKeyCode, 0, User32NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
 
@@ -261,6 +264,46 @@ namespace EveFPreview.UI.Hotkeys
 			// The synthetic press never came back as a WM_HOTKEY (some other app may have grabbed
 			// it, or the OS dropped it under load) - don't let the queue stall forever because of it.
 			OnHotkeyFired();
+		}
+
+		/// <summary>Whether the modifiers held down right now, with our key code, form a hotkey we registered.</summary>
+		private static bool IsHeldModifierComboRegistered()
+		{
+			uint held = 0;
+			if (ForegroundActivator.IsKeyDown(0x11)) // VK_CONTROL
+			{
+				held |= HotkeyHandlerNativeMethods.MOD_CONTROL;
+			}
+
+			if (ForegroundActivator.IsKeyDown(0x12)) // VK_MENU
+			{
+				held |= HotkeyHandlerNativeMethods.MOD_ALT;
+			}
+
+			if (ForegroundActivator.IsKeyDown(0x10)) // VK_SHIFT
+			{
+				held |= HotkeyHandlerNativeMethods.MOD_SHIFT;
+			}
+
+			if (ForegroundActivator.IsKeyDown(0x5B) || ForegroundActivator.IsKeyDown(0x5C)) // VK_LWIN / VK_RWIN
+			{
+				held |= HotkeyHandlerNativeMethods.MOD_WIN;
+			}
+
+			foreach (InternalHotkeyFilter filter in Filters)
+			{
+				if (filter.Modifiers == held)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		private static bool IsKeyDown(int virtualKey)
+		{
+			return (HotkeyHandlerNativeMethods.GetAsyncKeyState(virtualKey) & 0x8000) != 0;
 		}
 
 		private static uint[] BuildModifierCombinations()
@@ -352,6 +395,8 @@ namespace EveFPreview.UI.Hotkeys
 				this._id = id;
 				this._modifiers = modifiers;
 			}
+
+			public uint Modifiers => this._modifiers;
 
 			public bool Register()
 			{

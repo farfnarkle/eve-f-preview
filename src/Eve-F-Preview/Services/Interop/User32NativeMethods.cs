@@ -70,8 +70,6 @@ namespace EveFPreview.Services.Interop
 		[DllImport("kernel32.dll")]
 		public static extern uint GetCurrentThreadId();
 
-		public const byte VK_MENU = 0x12;
-
 		public const uint KEYEVENTF_KEYUP = 0x0002;
 
 		[DllImport("user32.dll")]
