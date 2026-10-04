@@ -26,6 +26,30 @@ namespace EveFPreview.UI.Hotkeys
 		[DllImport("user32.dll")]
 		public static extern short GetAsyncKeyState(int vKey);
 
+		[StructLayout(LayoutKind.Sequential)]
+		public struct Msg
+		{
+			public IntPtr Hwnd;
+			public uint Message;
+			public IntPtr WParam;
+			public IntPtr LParam;
+			public uint Time;
+			public int PtX;
+			public int PtY;
+		}
+
+		[DllImport("user32.dll")]
+		public static extern int GetMessage(out Msg lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
+
+		[DllImport("user32.dll", SetLastError = true)]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool PostThreadMessage(uint idThread, uint msg, IntPtr wParam, IntPtr lParam);
+
+		[DllImport("kernel32.dll")]
+		public static extern uint GetCurrentThreadId();
+
+		public const uint WM_QUIT = 0x0012;
+
 		public const uint WM_HOTKEY = 0x0312;
 		public const int WM_MBUTTONDOWN = 0x0207;
 		public const int WM_XBUTTONDOWN = 0x020B;
