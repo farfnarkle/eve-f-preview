@@ -102,7 +102,7 @@ namespace EveFPreview.Configuration.Implementation
 			this.ClientPortraitPaths = new Dictionary<string, string>();
 			this.PortraitThumbnailsDirectory = string.Empty;
 
-			this.ExecutablesToPreview = new List<string> { "exefile" };
+			this.ExecutablesToPreview = new List<string> { EveFPreview.Services.EveClient.ProcessName };
 			this.CycleApps = new List<CycleApp>();
 
 			this.MinimizeToTray = false;

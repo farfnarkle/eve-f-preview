@@ -363,34 +363,13 @@ namespace EveFPreview.Services
 				if (configuration.TryGetCharacterId(entry.Key, out long characterId)
 					&& characterId == configuration.AutoSettingsSyncSourceCharacterId)
 				{
-					return StripEvePrefix(entry.Key);
+					return EveClient.StripTitlePrefix(entry.Key);
 				}
 			}
 
 			return null;
 		}
 
-		private static string StripEvePrefix(string windowTitle)
-		{
-			if (string.IsNullOrWhiteSpace(windowTitle))
-			{
-				return windowTitle;
-			}
-
-			const string evePrefix = "EVE - ";
-			const string frontierPrefix = "EVE Frontier - ";
-			if (windowTitle.StartsWith(frontierPrefix, StringComparison.OrdinalIgnoreCase))
-			{
-				return windowTitle.Substring(frontierPrefix.Length).Trim();
-			}
-
-			if (windowTitle.StartsWith(evePrefix, StringComparison.OrdinalIgnoreCase))
-			{
-				return windowTitle.Substring(evePrefix.Length).Trim();
-			}
-
-			return windowTitle;
-		}
 
 		public static void AppendLog(string reason, EveSettingsSyncReport report, string skipReason)
 		{

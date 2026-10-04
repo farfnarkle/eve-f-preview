@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
+using EveFPreview.Services.Interop;
 
 namespace EveFPreview.UI.Hotkeys
 {
@@ -293,7 +294,7 @@ namespace EveFPreview.UI.Hotkeys
 
 		private static bool IsKeyDown(Keys key)
 		{
-			return (HotkeyHandlerNativeMethods.GetAsyncKeyState((int)key) & 0x8000) != 0;
+			return User32NativeMethods.IsKeyPhysicallyDown((int)key);
 		}
 	}
 }

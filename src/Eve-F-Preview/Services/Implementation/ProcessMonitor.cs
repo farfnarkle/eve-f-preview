@@ -12,8 +12,7 @@ namespace EveFPreview.Services
 	sealed class ProcessMonitor : IProcessMonitor
 	{
 		#region Private constants
-		/// <summary>Windows / Wine EVE Online client process name (no .exe).</summary>
-		private const string EveOnlineClientProcessName = "exefile";
+		private const string EveOnlineClientProcessName = EveClient.ProcessName;
 
 		/// <summary>How long Close all EVE clients waits for clients to close themselves before force-closing them.</summary>
 		private static readonly TimeSpan GracefulCloseTimeout = TimeSpan.FromSeconds(5);

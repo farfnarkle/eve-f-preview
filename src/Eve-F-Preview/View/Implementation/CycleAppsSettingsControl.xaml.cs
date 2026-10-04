@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using EveFPreview.Configuration;
+using EveFPreview.Services;
 
 namespace EveFPreview.View
 {
@@ -17,7 +18,7 @@ namespace EveFPreview.View
 	/// </summary>
 	public sealed partial class CycleAppsSettingsControl : UserControl
 	{
-		private const string EveClientProcessName = "exefile";
+		private const string EveClientProcessName = EveClient.ProcessName;
 
 		private readonly ObservableCollection<CycleAppRow> _rows = new ObservableCollection<CycleAppRow>();
 

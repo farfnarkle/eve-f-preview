@@ -228,7 +228,7 @@ namespace EveFPreview.Services.Implementation
 			bool forceRedownload,
 			CancellationToken cancellationToken)
 		{
-			if (!CharacterPortraitNaming.TryGetCharacterName(windowTitle, out string characterName))
+			if (!EveClient.TryGetCharacterName(windowTitle, out string characterName))
 			{
 				this.Log($"Skipped '{windowTitle}': not a logged-in character window.");
 				return null;
@@ -501,7 +501,7 @@ namespace EveFPreview.Services.Implementation
 		{
 			return !string.IsNullOrWhiteSpace(title)
 				&& !string.Equals(title, DefaultClientTitle, StringComparison.OrdinalIgnoreCase)
-				&& CharacterPortraitNaming.TryGetCharacterName(title, out _);
+				&& EveClient.TryGetCharacterName(title, out _);
 		}
 
 		private void Log(string message)
@@ -528,30 +528,6 @@ namespace EveFPreview.Services.Implementation
 			{
 				// Logging must never break a download (it is also called from inside catch blocks).
 			}
-		}
-	}
-
-	static class CharacterPortraitNaming
-	{
-		public static bool TryGetCharacterName(string windowTitle, out string characterName)
-		{
-			const string evePrefix = "EVE - ";
-			const string frontierPrefix = "EVE Frontier - ";
-
-			if (windowTitle.StartsWith(frontierPrefix, StringComparison.OrdinalIgnoreCase))
-			{
-				characterName = windowTitle.Substring(frontierPrefix.Length).Trim();
-				return characterName.Length > 0;
-			}
-
-			if (windowTitle.StartsWith(evePrefix, StringComparison.OrdinalIgnoreCase))
-			{
-				characterName = windowTitle.Substring(evePrefix.Length).Trim();
-				return characterName.Length > 0;
-			}
-
-			characterName = null;
-			return false;
 		}
 	}
 }

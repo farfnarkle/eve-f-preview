@@ -76,7 +76,7 @@ namespace EveFPreview.Services.Implementation
 			var characterIds = new HashSet<long>();
 			foreach ((string windowTitle, long characterId) in clients)
 			{
-				if (EveChatLogLocationService.TryGetCharacterName(windowTitle, out string name))
+				if (EveClient.TryGetCharacterName(windowTitle, out string name))
 				{
 					names.Add(name);
 				}
@@ -127,7 +127,7 @@ namespace EveFPreview.Services.Implementation
 				return true;
 			}
 
-			string characterName = EveChatLogLocationService.StripEvePrefix(windowTitle);
+			string characterName = EveClient.StripTitlePrefix(windowTitle);
 			if (!string.IsNullOrEmpty(characterName)
 				&& this._nameToCharacterId.TryGetValue(characterName, out long mappedId)
 				&& this._systemByCharacterId.TryGetValue(mappedId, out systemName)
@@ -512,32 +512,6 @@ namespace EveFPreview.Services.Implementation
 			}
 
 			return null;
-		}
-
-		/// <summary>The character name of a logged-in client's window title ("EVE - Name"); false for anything else.</summary>
-		private static bool TryGetCharacterName(string windowTitle, out string name)
-		{
-			const string prefix = "EVE - ";
-			name = windowTitle != null && windowTitle.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-				? windowTitle.Substring(prefix.Length).Trim()
-				: null;
-			return !string.IsNullOrEmpty(name);
-		}
-
-		private static string StripEvePrefix(string windowTitle)
-		{
-			if (string.IsNullOrEmpty(windowTitle))
-			{
-				return null;
-			}
-
-			const string prefix = "EVE - ";
-			if (windowTitle.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-			{
-				return windowTitle.Substring(prefix.Length).Trim();
-			}
-
-			return windowTitle.Trim();
 		}
 
 		private static string SanitizeSystemName(string raw)

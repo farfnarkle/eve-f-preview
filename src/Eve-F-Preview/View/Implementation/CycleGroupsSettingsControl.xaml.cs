@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using EveFPreview.Configuration;
+using EveFPreview.Services;
 
 namespace EveFPreview.View
 {
@@ -16,7 +17,7 @@ namespace EveFPreview.View
 	public sealed partial class CycleGroupsSettingsControl : UserControl
 	{
 		private const int GroupCount = 5;
-		private const string LoginClientTitle = "EVE";
+		private const string LoginClientTitle = EveClient.LoginScreenTitle;
 
 		private static readonly string[] GroupChoices =
 		{

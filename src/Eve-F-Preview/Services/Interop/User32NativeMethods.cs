@@ -133,5 +133,15 @@ namespace EveFPreview.Services.Interop
 
 		[DllImport("user32.dll")]
 		public static extern short GetAsyncKeyState(int vKey);
+
+		/// <summary>
+		/// Whether the key is physically held down right now (GetAsyncKeyState) - for polling and for the
+		/// mouse hook thread. WindowNativeMethods.IsKeyDown (GetKeyState) is the key state as of the
+		/// input message the UI thread is currently handling, which is what UI event handlers want.
+		/// </summary>
+		public static bool IsKeyPhysicallyDown(int virtualKey)
+		{
+			return (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
+		}
 	}
 }

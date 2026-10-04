@@ -59,8 +59,7 @@ namespace EveFPreview.Services
 		/// </summary>
 		public string ProfileName { get; set; }
 
-		public string EveDataRoot { get; set; } =
-			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CCP", "EVE");
+		public string EveDataRoot { get; set; } = EveSettingsSync.GetEveDataRoot();
 
 		public string ServerFolderPattern { get; set; } = "*_tranquility";
 	}
@@ -119,14 +118,13 @@ namespace EveFPreview.Services
 
 		public static bool IsEveRunning()
 		{
-			string[] names = { "exefile", "evelauncher", "eve" };
+			string[] names = { EveClient.ProcessName, "evelauncher", "eve" };
 			return names.Any(n => Process.GetProcessesByName(n).Length > 0);
 		}
 
 		public static IEnumerable<EveSettingsFileInfo> DiscoverSettingsFiles(string eveDataRoot = null, string serverPattern = "*_tranquility")
 		{
-			string root = eveDataRoot ?? Path.Combine(
-				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CCP", "EVE");
+			string root = GetEveDataRoot(eveDataRoot);
 			var results = new List<EveSettingsFileInfo>();
 			if (!Directory.Exists(root))
 			{
@@ -167,8 +165,7 @@ namespace EveFPreview.Services
 		/// <summary>EVE settings profile folder names (e.g. settings_Farfnarkle), excluding backup folders.</summary>
 		public static IList<string> DiscoverProfileNames(string eveDataRoot = null, string serverPattern = "*_tranquility")
 		{
-			string root = eveDataRoot ?? Path.Combine(
-				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CCP", "EVE");
+			string root = GetEveDataRoot(eveDataRoot);
 			var names = new List<string>();
 			if (!Directory.Exists(root))
 			{
@@ -194,8 +191,7 @@ namespace EveFPreview.Services
 				return null;
 			}
 
-			string root = eveDataRoot ?? Path.Combine(
-				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CCP", "EVE");
+			string root = GetEveDataRoot(eveDataRoot);
 			if (!Directory.Exists(root))
 			{
 				return null;
@@ -251,8 +247,7 @@ namespace EveFPreview.Services
 			EveSettingsBackupMode mode = EveSettingsBackupMode.Manual)
 		{
 			var report = new EveSettingsSyncReport();
-			string root = eveDataRoot ?? Path.Combine(
-				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CCP", "EVE");
+			string root = GetEveDataRoot(eveDataRoot);
 
 			if (!Directory.Exists(root))
 			{

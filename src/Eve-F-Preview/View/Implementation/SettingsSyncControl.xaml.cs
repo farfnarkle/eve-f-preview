@@ -261,7 +261,7 @@ namespace EveFPreview.View
 					continue;
 				}
 
-				names[characterId] = StripEvePrefix(entry.Key);
+				names[characterId] = EveClient.StripTitlePrefix(entry.Key);
 			}
 
 			return names;
@@ -771,26 +771,5 @@ namespace EveFPreview.View
 				report.Warnings.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
 		}
 
-		private static string StripEvePrefix(string windowTitle)
-		{
-			if (string.IsNullOrWhiteSpace(windowTitle))
-			{
-				return windowTitle;
-			}
-
-			const string evePrefix = "EVE - ";
-			const string frontierPrefix = "EVE Frontier - ";
-			if (windowTitle.StartsWith(frontierPrefix, StringComparison.OrdinalIgnoreCase))
-			{
-				return windowTitle.Substring(frontierPrefix.Length).Trim();
-			}
-
-			if (windowTitle.StartsWith(evePrefix, StringComparison.OrdinalIgnoreCase))
-			{
-				return windowTitle.Substring(evePrefix.Length).Trim();
-			}
-
-			return windowTitle;
-		}
 	}
 }

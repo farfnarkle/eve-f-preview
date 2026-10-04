@@ -29,7 +29,7 @@ namespace EveFPreview.Services
 		// follow-up press is slower, so cycling stays responsive.
 		private const int MOUSE_CYCLE_DOUBLE_CLICK_GUARD_MS = 100;
 
-		private const string DEFAULT_CLIENT_TITLE = "EVE";
+		private const string DEFAULT_CLIENT_TITLE = EveClient.LoginScreenTitle;
 		#endregion
 
 		#region Private fields
@@ -907,7 +907,7 @@ namespace EveFPreview.Services
 
 		private static bool IsKeyDown(Keys key)
 		{
-			return (User32NativeMethods.GetAsyncKeyState((int)key) & 0x8000) != 0;
+			return User32NativeMethods.IsKeyPhysicallyDown((int)key);
 		}
 
 		// Click-through is driven by modifiers only, so it is polled instead of registered as a

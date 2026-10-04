@@ -303,7 +303,7 @@ namespace EveFPreview.UI.Hotkeys
 
 		private static bool IsKeyDown(int virtualKey)
 		{
-			return (HotkeyHandlerNativeMethods.GetAsyncKeyState(virtualKey) & 0x8000) != 0;
+			return User32NativeMethods.IsKeyPhysicallyDown(virtualKey);
 		}
 
 		private static uint[] BuildModifierCombinations()
