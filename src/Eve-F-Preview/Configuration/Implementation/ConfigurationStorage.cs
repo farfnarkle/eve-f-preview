@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows;
+using System.Windows.Threading;
 using Newtonsoft.Json;
 
 namespace EveFPreview.Configuration.Implementation
@@ -10,6 +12,9 @@ namespace EveFPreview.Configuration.Implementation
 		private const string CONFIGURATION_FILE_NAME = "EVE-F-Preview.json";
 		private const string LEGACY_CONFIGURATION_FILE_NAME = "EVE-O-Preview.json";
 		private const string BACKUP_SUFFIX = ".bak";
+		private const string LOG_FILE_NAME = "EVE-F-Preview.log";
+		private static readonly TimeSpan SaveRetryDelay = TimeSpan.FromSeconds(2);
+		private const int MaxQuickRetries = 3;
 
 		private static readonly JsonSerializerSettings LoadSettings = new JsonSerializerSettings()
 		{
@@ -24,6 +29,9 @@ namespace EveFPreview.Configuration.Implementation
 		private readonly IAppConfig _appConfig;
 		private readonly IThumbnailConfiguration _thumbnailConfiguration;
 		private readonly object _saveSync = new object();
+		private DispatcherTimer _saveRetryTimer;
+		private int _consecutiveSaveFailures;
+		private bool _userToldAboutSaveFailure;
 
 		public ConfigurationStorage(IAppConfig appConfig, IThumbnailConfiguration thumbnailConfiguration)
 		{
@@ -126,7 +134,68 @@ namespace EveFPreview.Configuration.Implementation
 			}
 			catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
 			{
-				// Ignore error if for some reason the updated config cannot be written down
+				this.OnSaveFailed(filename, ex);
+				return;
+			}
+
+			if (this._consecutiveSaveFailures > 0)
+			{
+				ConfigurationStorage.Log($"Settings saved again after {this._consecutiveSaveFailures} failed attempt(s).");
+				this._consecutiveSaveFailures = 0;
+			}
+		}
+
+		/// <summary>
+		/// Every save writes the whole config, so one failed write (antivirus or a backup tool briefly
+		/// holding the file, ...) is made good by the next save. It's logged and retried shortly; if
+		/// the retry fails too, the user is told once per session, since changes would then be lost
+		/// if the app closed. It used to be ignored silently.
+		/// </summary>
+		private void OnSaveFailed(string filename, Exception ex)
+		{
+			this._consecutiveSaveFailures++;
+			ConfigurationStorage.Log($"Could not save settings to {filename} (attempt {this._consecutiveSaveFailures}): {ex.Message}");
+
+			if (this._consecutiveSaveFailures >= 2 && !this._userToldAboutSaveFailure)
+			{
+				this._userToldAboutSaveFailure = true;
+				string message = "EVE-F-Preview can't save your settings to:\n" + filename + "\n\n" + ex.Message +
+					"\n\nIt will keep trying. Changes made since the last successful save will be lost if the app is closed before then.";
+				// Not from inside the save itself: a modal box would run a nested message loop mid-save.
+				Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+					MessageBox.Show(message, "EVE-F-Preview", MessageBoxButton.OK, MessageBoxImage.Warning)));
+			}
+
+			// A few quick retries cover a briefly locked file; past that, the next ordinary save tries again.
+			if (Application.Current?.Dispatcher == null || this._consecutiveSaveFailures > ConfigurationStorage.MaxQuickRetries)
+			{
+				return;
+			}
+
+			if (this._saveRetryTimer == null)
+			{
+				this._saveRetryTimer = new DispatcherTimer { Interval = ConfigurationStorage.SaveRetryDelay };
+				this._saveRetryTimer.Tick += (_, _) =>
+				{
+					this._saveRetryTimer.Stop();
+					this.Save();
+				};
+			}
+
+			this._saveRetryTimer.Stop();
+			this._saveRetryTimer.Start();
+		}
+
+		private static void Log(string message)
+		{
+			try
+			{
+				File.AppendAllText(Path.Combine(AppContext.BaseDirectory, ConfigurationStorage.LOG_FILE_NAME),
+					$"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}");
+			}
+			catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+			{
+				// The log lives next to the config; if that folder can't be written to either, there's nowhere to say so.
 			}
 		}
 
