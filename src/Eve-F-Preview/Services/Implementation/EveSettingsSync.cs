@@ -88,7 +88,12 @@ namespace EveFPreview.Services
 		private static readonly Regex UserRegex = new Regex(@"^core_user_(\d+)\.dat$", RegexOptions.IgnoreCase);
 		private const string ManualBackupMarker = "_sync_backup_";
 		private const string AutomaticBackupMarker = "_sync_auto_backup";
+		// One per settings file, never pruned: the file as it was before automatic syncs first touched it.
+		private const string OriginalBackupMarker = "_sync_original";
 		private const int AutomaticBackupRetainCount = 5;
+		private static readonly Regex AutomaticBackupStampRegex = new Regex(
+			@"_sync_auto_backup_(?<stamp>\d{8}_\d{6})(?:_(?<n>\d+))?\.dat$",
+			RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
 		private readonly EveSettingsSyncOptions _options;
 
@@ -486,7 +491,8 @@ namespace EveFPreview.Services
 			}
 
 			return fileName.IndexOf(ManualBackupMarker, StringComparison.OrdinalIgnoreCase) >= 0
-				|| fileName.IndexOf(AutomaticBackupMarker, StringComparison.OrdinalIgnoreCase) >= 0;
+				|| fileName.IndexOf(AutomaticBackupMarker, StringComparison.OrdinalIgnoreCase) >= 0
+				|| fileName.IndexOf(OriginalBackupMarker, StringComparison.OrdinalIgnoreCase) >= 0;
 		}
 
 		private static bool IsAutomaticBackupFileName(string fileName)
@@ -578,6 +584,8 @@ namespace EveFPreview.Services
 
 			if (mode == EveSettingsBackupMode.Automatic)
 			{
+				EnsureOriginalBackup(dir, stem, file, report, dryRun);
+
 				// Two backups of the same file within one second would share a name; add a counter
 				// rather than fail (a failed backup now blocks the sync of that file).
 				string baseName = stem + AutomaticBackupMarker + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -619,6 +627,54 @@ namespace EveFPreview.Services
 		}
 
 		/// <summary>
+		/// Automatic syncs run at every launch and only the newest AutomaticBackupRetainCount automatic
+		/// backups are kept, so after a few launches nothing from before the first sync would be left.
+		/// The first automatic backup of a file therefore also makes a permanent "_sync_original" copy.
+		/// For a file that already has automatic backups (from before this existed) the oldest of them
+		/// becomes the original - the earliest state still available. "Delete sync backups" removes it.
+		/// </summary>
+		private static void EnsureOriginalBackup(string dir, string stem, string file, EveSettingsSyncReport report, bool dryRun)
+		{
+			string original = Path.Combine(dir, stem + OriginalBackupMarker + ".dat");
+			if (File.Exists(original))
+			{
+				return;
+			}
+
+			FileInfo oldestAutomatic = GetAutomaticBackupsOldestFirst(dir, stem).FirstOrDefault();
+			string source = oldestAutomatic?.FullName ?? file;
+			Do(report, "original backup " + Path.GetFileName(source) + " -> " + Path.GetFileName(original),
+				() => File.Copy(source, original, overwrite: false), dryRun);
+		}
+
+		/// <summary>
+		/// Ordered by the timestamp in the file name (then its same-second counter): File.Copy keeps
+		/// the source's modification time, so that says when the settings were last changed, not when
+		/// the backup was made.
+		/// </summary>
+		private static List<FileInfo> GetAutomaticBackupsOldestFirst(string dir, string stem)
+		{
+			return Directory.EnumerateFiles(dir, stem + AutomaticBackupMarker + "*.dat")
+				.Select(path => new FileInfo(path))
+				.Where(fi => IsAutomaticBackupFileName(fi.Name))
+				.Select(fi =>
+				{
+					Match match = AutomaticBackupStampRegex.Match(fi.Name);
+					DateTime made = match.Success
+						&& DateTime.TryParseExact(match.Groups["stamp"].Value, "yyyyMMdd_HHmmss",
+							System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime stamp)
+						? stamp
+						: fi.LastWriteTime;
+					int counter = match.Success && match.Groups["n"].Success ? int.Parse(match.Groups["n"].Value) : 1;
+					return (File: fi, Made: made, Counter: counter);
+				})
+				.OrderBy(x => x.Made)
+				.ThenBy(x => x.Counter)
+				.Select(x => x.File)
+				.ToList();
+		}
+
+		/// <summary>
 		/// Keep the newest AutomaticBackupRetainCount auto-backups for a live settings stem; delete older ones.
 		/// </summary>
 		private static void PruneAutomaticBackups(string dir, string stem, EveSettingsSyncReport report, bool dryRun)
@@ -628,13 +684,7 @@ namespace EveFPreview.Services
 				return;
 			}
 
-			string pattern = stem + AutomaticBackupMarker + "*.dat";
-			List<FileInfo> autoBackups = Directory.EnumerateFiles(dir, pattern)
-				.Select(path => new FileInfo(path))
-				.Where(fi => IsAutomaticBackupFileName(fi.Name))
-				.OrderBy(fi => fi.LastWriteTimeUtc)
-				.ThenBy(fi => fi.Name, StringComparer.OrdinalIgnoreCase)
-				.ToList();
+			List<FileInfo> autoBackups = GetAutomaticBackupsOldestFirst(dir, stem);
 
 			int removeCount = autoBackups.Count - AutomaticBackupRetainCount;
 			for (int i = 0; i < removeCount; i++)
