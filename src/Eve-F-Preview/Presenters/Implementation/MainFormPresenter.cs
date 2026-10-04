@@ -574,13 +574,9 @@ namespace EveFPreview.Presenters
 			}
 
 			// TODO Move out to a separate service / presenter / message handler
-#if LINUX
-			Process.Start("xdg-open", uri.AbsoluteUri);
-#else
 			ProcessStartInfo processStartInfo = new ProcessStartInfo(uri.AbsoluteUri);
 			processStartInfo.UseShellExecute = true;
 			Process.Start(processStartInfo);
-#endif
 		}
 
 		private string GetApplicationVersion()
@@ -609,11 +605,7 @@ namespace EveFPreview.Presenters
 				}
 			}
 
-			string target = "Windows";
-#if LINUX
-			target = "Linux";
-#endif
-			return $"{versionLabel} {target}";
+			return $"{versionLabel} Windows";
 		}
 
 		private void ExitApplication()

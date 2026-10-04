@@ -151,9 +151,6 @@ namespace EveFPreview.Services
 
 		private static string GetProcessCommandLine(int processId)
 		{
-#if LINUX
-			return null;
-#else
 			try
 			{
 				using var searcher = new System.Management.ManagementObjectSearcher(
@@ -179,7 +176,6 @@ namespace EveFPreview.Services
 			}
 
 			return null;
-#endif
 		}
 	}
 }

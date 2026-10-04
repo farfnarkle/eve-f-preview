@@ -17,62 +17,14 @@ namespace EveFPreview.Services.Implementation
 		private const int NO_ANIMATION = 0;
 		#endregion
 
-		#region Private fields
-#if LINUX
-		private readonly bool _enableWineCompatabilityMode;
-		private string _bashLocation;
-		private string _wmctrlLocation;
-#endif
-		private const string EXCEPTION_DUMP_FILE_NAME = "EVE-F-Preview.log";
-		#endregion
-
-
 		public WindowManager(IThumbnailConfiguration configuration)
 		{
-#if LINUX
-			this._enableWineCompatabilityMode = configuration.EnableWineCompatibilityMode;
-			this._bashLocation = FindLinuxBinLocation("bash");
-			this._wmctrlLocation = FindLinuxBinLocation("wmctrl");
-#endif
 			// Composition is always enabled for Windows 8+
 			this.IsCompositionEnabled = 
 				((Environment.OSVersion.Version.Major == 6) && (Environment.OSVersion.Version.Minor >= 2)) // Win 8 and Win 8.1
 				|| (Environment.OSVersion.Version.Major >= 10) // Win 10
 				|| DwmNativeMethods.DwmIsCompositionEnabled(); // In case of Win 7 an API call is requiredWin 7
 			_animationParam.cbSize = (System.UInt32)Marshal.SizeOf(typeof(ANIMATIONINFO));
-		}
-#if LINUX
-		private string FindLinuxBinLocation(string command)
-		{
-			// Check common paths for command
-			string[] paths = { "/run/host/usr/bin", "/bin", "/usr/bin" };
-			foreach (var path in paths)
-			{
-			    string locationToCheck = $"{path}/{command}";
-				if (System.IO.File.Exists(locationToCheck))
-				{
-					string binLocation = System.IO.Path.GetDirectoryName(locationToCheck);
-					string binLocationUnixStyle = binLocation.Replace("\\", "/");
-
-					return binLocationUnixStyle;
-				}
-			}
-
-			WriteToLog($"[{DateTime.Now}] Error: {command} not found in expected locations.");
-			return null;
-		}
-#endif
-
-		private void WriteToLog(string message)
-		{
-			try
-			{
-				System.IO.File.AppendAllText(Path.Combine(AppContext.BaseDirectory, EXCEPTION_DUMP_FILE_NAME), message + Environment.NewLine);
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine($"Failed to write to log file: {ex.Message}");
-			}
 		}
 
 		private int? _currentAnimationSetting = null;
@@ -127,97 +79,7 @@ namespace EveFPreview.Services.Implementation
 			}
 		}
 
-		// if building for LINUX the window handling is slightly different
-#if LINUX
-		private void WindowsActivateWindow(IntPtr handle, Action<bool> onActivated = null)
-		{
-			WindowManager.ForceSetForegroundWindow(handle, onActivated);
-			User32NativeMethods.SetFocus(handle);
 
-			uint style = User32NativeMethods.GetWindowLong(handle, InteropConstants.GWL_STYLE);
-
-			if ((style & InteropConstants.WS_MINIMIZE) == InteropConstants.WS_MINIMIZE)
-			{
-				User32NativeMethods.ShowWindowAsync(handle, InteropConstants.SW_RESTORE);
-			}
-		}
-
-		private void WineActivateWindow(string windowName)
-		{
-			// On Wine it is not possible to manipulate windows directly.
-			// They are managed by native Window Manager
-			// So a separate command-line utility is used
-			if (string.IsNullOrEmpty(windowName))
-			{
-				return;
-			}
-
-            string cmd = "";
-			try
-			{
-                // If we are in a flatpak, then use flatpak-spawn to run wmctrl outside the sandbox
-                if (Environment.GetEnvironmentVariable("container") == "flatpak")
-                {
-                    cmd = $"-c \"flatpak-spawn --host wmctrl -a \"\"" + windowName + "\"\"\"";
-                } 
-                else 
-                {
-                    cmd = $"-c \"{this._wmctrlLocation}/wmctrl -a \"\"" + windowName + "\"\"\"";
-                }
-
-				// Configure and start the process
-				var processStartInfo = new System.Diagnostics.ProcessStartInfo
-				{
-					FileName = $"{this._bashLocation}/bash",
-					Arguments = cmd,
-					UseShellExecute = false,
-					CreateNoWindow = false
-				};
-
-				using (var process = System.Diagnostics.Process.Start(processStartInfo))
-				{
-					process.WaitForExit();
-				}
-			}
-			catch (Exception ex)
-			{
-				WriteToLog($"[{DateTime.Now}] executing wmctrl - Exception: {ex.Message}");
-			}
-		}
-
-        public void ActivateWindow(IntPtr handle, string windowName, Action<bool> onActivated = null)
-        {
-            if (this._enableWineCompatabilityMode)
-            {
-                this.WineActivateWindow(windowName);
-                // Wine's wmctrl path has no equivalent of a real foreground check - assume success.
-                onActivated?.Invoke(true);
-            }
-            else
-            {
-                this.WindowsActivateWindow(handle, onActivated);
-            }
-        }
-
-        public void MinimizeWindow(IntPtr handle, bool enableAnimation)
-		{
-			if (enableAnimation)
-			{
-				User32NativeMethods.SendMessage(handle, InteropConstants.WM_SYSCOMMAND, InteropConstants.SC_MINIMIZE, 0);
-			}
-			else
-			{
-				WINDOWPLACEMENT param = new WINDOWPLACEMENT();
-				param.length = Marshal.SizeOf(typeof(WINDOWPLACEMENT));
-				User32NativeMethods.GetWindowPlacement(handle, ref param);
-				param.showCmd = WINDOWPLACEMENT.SW_MINIMIZE;
-				User32NativeMethods.SetWindowPlacement(handle, ref param);
-			}
-		}
-
-#endif
-
-#if WINDOWS
 		public void ActivateWindow(IntPtr handle, AnimationStyle animation, Action<bool> onActivated = null)
 		{
 			WindowManager.ForceSetForegroundWindow(handle, onActivated);
@@ -276,7 +138,6 @@ namespace EveFPreview.Services.Implementation
 				}
 			}
 		}
-#endif
 
 		public void MoveWindow(IntPtr handle, int left, int top, int width, int height)
 		{

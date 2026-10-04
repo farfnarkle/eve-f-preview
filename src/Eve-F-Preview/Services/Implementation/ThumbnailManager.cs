@@ -263,11 +263,7 @@ namespace EveFPreview.Services
 			// doesn't (confirmed by checking the real foreground window, not just trusting
 			// SetForegroundWindow's return value), reconcile immediately instead of leaving a wrong
 			// highlight up until the next foreground poll happens to notice.
-#if LINUX
-			this._windowManager.ActivateWindow(newClient.Key, newClient.Value.Title, this.OnActivationConfirmed);
-#else
 			this._windowManager.ActivateWindow(newClient.Key, this._configuration.WindowsAnimationStyle, this.OnActivationConfirmed);
-#endif
 		}
 
 		private void OnActivationConfirmed(bool confirmed)
@@ -1580,11 +1576,7 @@ namespace EveFPreview.Services
 			if (this._configuration.MinimizeInactiveClients && !activeIsApp && !this._configuration.IsPriorityClient(this._activeClient.Title))
 			{
 				this._windowManager.MinimizeWindow(this._activeClient.Handle, this._configuration.WindowsAnimationStyle, false);
-#if LINUX
-   			    this._windowManager.ActivateWindow(foregroundClientHandle, foregroundClientTitle);
-#else
 				this._windowManager.ActivateWindow(foregroundClientHandle, this._configuration.WindowsAnimationStyle);
-#endif
 			}
 
 			this._activeClient = (foregroundClientHandle, foregroundClientTitle);
@@ -1773,22 +1765,14 @@ namespace EveFPreview.Services
 			this.UpdateClientLayouts();
 			this.RefreshThumbnails();
 
-#if LINUX
-			this._windowManager.ActivateWindow(view.Id, view.Title, this.OnActivationConfirmed);
-#else
 			this._windowManager.ActivateWindow(view.Id, this._configuration.WindowsAnimationStyle, this.OnActivationConfirmed);
-#endif
 		}
 
 		private void ThumbnailDeactivated(IntPtr id, bool switchOut)
 		{
 			if (switchOut)
 			{
-#if LINUX
-				this._windowManager.ActivateWindow(this._externalApplication, null);
-#else
 				this._windowManager.ActivateWindow(this._externalApplication, this._configuration.WindowsAnimationStyle);
-#endif
 			}
 			else
 			{

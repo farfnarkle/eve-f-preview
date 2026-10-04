@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-	  <DefineConstants Condition="'$(EVEOTarget)'=='Linux'">LINUX</DefineConstants>
 	  <TargetFramework>net8.0-windows8.0</TargetFramework>
     <OutputType>WinExe</OutputType>
 	  <PublishSingleFile>true</PublishSingleFile>
