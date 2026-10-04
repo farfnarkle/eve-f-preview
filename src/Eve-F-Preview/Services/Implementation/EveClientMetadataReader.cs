@@ -9,7 +9,8 @@ namespace EveFPreview.Services
 	/// <summary>
 	/// Reads the account / character ids the EVE launcher passes on a client's command line.
 	/// A process's command line never changes, so each window is looked up once and cached: the
-	/// lookup is a WMI query (tens of milliseconds) and runs on the UI thread.
+	/// lookup is a WMI query (tens of milliseconds), so callers run the first one off the UI thread.
+	/// Safe to call from any thread.
 	/// </summary>
 	internal static class EveClientMetadataReader
 	{
@@ -85,6 +86,18 @@ namespace EveFPreview.Services
 			}
 
 			return success;
+		}
+
+		/// <summary>Whether <see cref="TryReadMetadata"/> can answer for this window from the cache, without a WMI query.</summary>
+		public static bool IsCached(IntPtr mainWindowHandle)
+		{
+			User32NativeMethods.GetWindowThreadProcessId(mainWindowHandle, out uint processId);
+			lock (Sync)
+			{
+				return processId != 0
+					&& Cache.TryGetValue(mainWindowHandle, out CachedMetadata cached)
+					&& cached.ProcessId == processId;
+			}
 		}
 
 		/// <summary>Drops the cached entry for a window that has gone away.</summary>

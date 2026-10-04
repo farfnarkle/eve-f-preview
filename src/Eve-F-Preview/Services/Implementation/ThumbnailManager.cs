@@ -76,6 +76,8 @@ namespace EveFPreview.Services
 		private readonly Dictionary<IntPtr, long> _windowAccountIds;
 		// Windows whose launch character id has already been handed to the portrait service.
 		private readonly HashSet<IntPtr> _launchCharacterIdBound;
+		// Windows whose command line is being read off the UI thread right now.
+		private readonly HashSet<IntPtr> _metadataReadsInFlight = new HashSet<IntPtr>();
 		private DispatcherTimer _autoSettingsSyncDelayTimer;
 		private readonly DispatcherTimer _clickThroughPollTimer;
 		private const int AUTO_SETTINGS_SYNC_STARTUP_DELAY_MS = 2000;
@@ -2345,13 +2347,57 @@ namespace EveFPreview.Services
 			this.EnableViewEvents();
 		}
 
-		private void UpdateClientMetadata(IntPtr handle, string title)
+		/// <summary>
+		/// Reads the account / character ids off the client's command line. The first read for a
+		/// window is a WMI query (tens of milliseconds), so it runs off the UI thread - it used to
+		/// stall the UI each time a client started - and the result is applied back on it. Later
+		/// calls (title changes) hit the reader's cache and apply at once.
+		/// </summary>
+		private async void UpdateClientMetadata(IntPtr handle, string title)
 		{
-			if (!EveClientMetadataReader.TryReadMetadata(handle, out long accountId, out long characterId))
+			if (EveClientMetadataReader.IsCached(handle))
 			{
+				if (EveClientMetadataReader.TryReadMetadata(handle, out long cachedAccountId, out long cachedCharacterId))
+				{
+					this.ApplyClientMetadata(handle, title, cachedAccountId, cachedCharacterId);
+				}
+
 				return;
 			}
 
+			if (!this._metadataReadsInFlight.Add(handle))
+			{
+				return; // Already being read; it's applied with the window's title as of then.
+			}
+
+			(bool Success, long AccountId, long CharacterId) result;
+			try
+			{
+				result = await System.Threading.Tasks.Task.Run(() =>
+				{
+					bool success = EveClientMetadataReader.TryReadMetadata(handle, out long accountId, out long characterId);
+					return (success, accountId, characterId);
+				});
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine(ex);
+				return;
+			}
+			finally
+			{
+				this._metadataReadsInFlight.Remove(handle);
+			}
+
+			// The window may have closed, or changed title (e.g. left the login screen), meanwhile.
+			if (result.Success && this._thumbnailViews.TryGetValue(handle, out IThumbnailView view))
+			{
+				this.ApplyClientMetadata(handle, view.Title, result.AccountId, result.CharacterId);
+			}
+		}
+
+		private void ApplyClientMetadata(IntPtr handle, string title, long accountId, long characterId)
+		{
 			// The command line names the character the client was launched into and never changes, so
 			// it can only describe the first character this window shows: after a log-off to character
 			// selection it may be someone else. The portrait service still checks the id against the
