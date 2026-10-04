@@ -15,7 +15,6 @@ namespace EveFPreview.Services
 		void UpdateThumbnailFrames();
 		void RefreshPortraitOverlays();
 
-		IThumbnailView GetClientByTitle(string title);
 		IThumbnailView GetClientByPointer(System.IntPtr ptr);
 		IThumbnailView GetActiveClient();
 

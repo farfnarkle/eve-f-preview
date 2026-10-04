@@ -9,8 +9,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
-using System.Net;
-using System.Reflection.Metadata;
 using System.Windows.Threading;
 
 namespace EveFPreview.Services
@@ -58,7 +56,6 @@ namespace EveFPreview.Services
 		private IntPtr _hoverZoomThumbnailId;
 		private IntPtr _focusedOverwatchThumbnailId;
 
-		private int _refreshCycleCount;
 		private int _hideThumbnailsDelay;
 
 		private List<HotkeyHandler> _cycleClientHotkeyHandlers = new List<HotkeyHandler>();
@@ -102,7 +99,6 @@ namespace EveFPreview.Services
 			this.EnableViewEvents();
 			this._isHoverEffectActive = false;
 
-			this._refreshCycleCount = 0;
 			this._locationChangeNotificationSyncRoot = new object();
 			this._enqueuedLocationChangeNotification = (IntPtr.Zero, null, null, Point.Empty, -1);
 
@@ -232,11 +228,6 @@ namespace EveFPreview.Services
 		private IEnumerable<Keys> ToKeys(List<string> hotkeys)
 		{
 			return hotkeys?.Select(x => this._configuration.StringToKey(x)) ?? Enumerable.Empty<Keys>();
-		}
-
-		public IThumbnailView GetClientByTitle(string title)
-		{
-			return _thumbnailViews.FirstOrDefault(x => x.Value.Title == title).Value;
 		}
 
 		public IThumbnailView GetClientByPointer(IntPtr ptr)
@@ -1159,7 +1150,6 @@ namespace EveFPreview.Services
 				this.ApplyClientLayout(view);
 				this.ApplyCaptionBar(view);
 
-				// TODO Add extension filter here later
 				if (view.Title != ThumbnailManager.DEFAULT_CLIENT_TITLE)
 				{
 					viewsAdded.Add(view.Title);
@@ -1245,7 +1235,6 @@ namespace EveFPreview.Services
 
 		private void RefreshThumbnails()
 		{
-			// TODO Split this method
 			IntPtr foregroundWindowHandle = this._windowManager.GetForegroundWindowHandle();
 
 			// The foreground window can be NULL in certain circumstances, such as when a window is losing activation.
@@ -1306,8 +1295,6 @@ namespace EveFPreview.Services
 
 			// Manual toggle (hotkey) hides all thumbnails immediately, bypassing the focus-loss delay above.
 			hideAllThumbnails = hideAllThumbnails || this._manualHideAllThumbnails;
-
-			this._refreshCycleCount++;
 
 			// Periodic DWM unregister/re-register was expensive and unnecessary; only refresh lightly.
 			const bool forceRefresh = false;
@@ -2252,7 +2239,6 @@ namespace EveFPreview.Services
 		}
 
 		// We shouldn't manage some thumbnails (like thumbnail of the EVE client sitting on the login screen)
-		// TODO Move to a service (?)
 		private bool IsManageableThumbnail(IThumbnailView view)
 		{
 			return view.Title != ThumbnailManager.DEFAULT_CLIENT_TITLE;

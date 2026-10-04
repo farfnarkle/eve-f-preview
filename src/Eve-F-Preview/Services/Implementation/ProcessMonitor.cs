@@ -66,19 +66,6 @@ namespace EveFPreview.Services
 			return this._currentProcessInfo;
 		}
 
-		public ICollection<IProcessInfo> GetAllProcesses()
-		{
-			ICollection<IProcessInfo> result = new List<IProcessInfo>(this._processCache.Count);
-
-			// TODO Lock list here just in case
-			foreach (IProcessInfo entry in this._processCache.Values)
-			{
-				result.Add(entry);
-			}
-
-			return result;
-		}
-
 		public void GetUpdatedProcesses(out ICollection<IProcessInfo> addedProcesses, out ICollection<IProcessInfo> updatedProcesses, out ICollection<IProcessInfo> removedProcesses)
 		{
 			addedProcesses = new List<IProcessInfo>(16);

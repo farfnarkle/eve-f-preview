@@ -16,7 +16,6 @@ namespace EveFPreview.Services
 		void MaximizeWindow(IntPtr handle);
 		(int Left, int Top, int Right, int Bottom) GetWindowPosition(IntPtr handle);
 		bool IsWindowMaximized(IntPtr handle);
-		bool IsWindowMinimized(IntPtr handle);
 		IDwmThumbnail GetLiveThumbnail(IntPtr destination, IntPtr source);
 		BitmapSource GetStaticThumbnail(IntPtr source);
 	}

@@ -161,11 +161,6 @@ namespace EveFPreview.Services.Implementation
 			return User32NativeMethods.IsZoomed(handle);
 		}
 
-		public bool IsWindowMinimized(IntPtr handle)
-		{
-			return User32NativeMethods.IsIconic(handle);
-		}
-
 		public IDwmThumbnail GetLiveThumbnail(IntPtr destination, IntPtr source)
 		{
 			IDwmThumbnail thumbnail = new DwmThumbnail(this);

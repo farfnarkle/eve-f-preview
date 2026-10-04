@@ -573,7 +573,6 @@ namespace EveFPreview.Presenters
 				return;
 			}
 
-			// TODO Move out to a separate service / presenter / message handler
 			ProcessStartInfo processStartInfo = new ProcessStartInfo(uri.AbsoluteUri);
 			processStartInfo.UseShellExecute = true;
 			Process.Start(processStartInfo);
