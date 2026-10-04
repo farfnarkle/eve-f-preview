@@ -11,6 +11,8 @@ namespace EveFPreview.Configuration.Implementation
 	{
 		private const int FocusedThumbnailMaxDimension = 16384;
 
+		private static readonly string[] PlaceholderClientTitles = { "EVE - Example Toon 1", "EVE - Example Toon 2" };
+
 		#region Private fields
 		private bool _enablePerClientThumbnailLayouts;
 		#endregion
@@ -59,33 +61,11 @@ namespace EveFPreview.Configuration.Implementation
 			this.DynamicCycleForwardHotkeys = new List<string> { "F20" };
 			this.DynamicCycleBackwardHotkeys = new List<string> { "F21" };
 
-			this.PerClientActiveClientHighlightColor = new Dictionary<string, Color>
-			{
-				{"EVE - Example Toon 1", Color.Red},
-				{"EVE - Example Toon 2", Color.Green}
-			};
-			this.PerClientPreventPreviewColor = new Dictionary<string, Color>
-			{
-				{"EVE - Example Toon 1", Color.Red},
-				{"EVE - Example Toon 2", Color.Green}
-			};
-			this.PerClientPreventPreviews = new Dictionary<string, bool>
-			{
-				{"EVE - Example Toon 1", false},
-				{"EVE - Example Toon 2", true}
-			};
-
-			this.PerClientThumbnailSize = new Dictionary<string, Size>
-			{
-				{"EVE - Example Toon 1", new Size(200, 200)},
-				{"EVE - Example Toon 2", new Size(200, 200)}
-			};
-
-			this.PerClientZoomAnchor = new Dictionary<string, ZoomAnchor>
-			{
-				{"EVE - Example Toon 1", ZoomAnchor.N },
-				{"EVE - Example Toon 2", ZoomAnchor.S}
-			};
+			this.PerClientActiveClientHighlightColor = new Dictionary<string, Color>();
+			this.PerClientPreventPreviewColor = new Dictionary<string, Color>();
+			this.PerClientPreventPreviews = new Dictionary<string, bool>();
+			this.PerClientThumbnailSize = new Dictionary<string, Size>();
+			this.PerClientZoomAnchor = new Dictionary<string, ZoomAnchor>();
 
 			this.CycleGroupExclusions = new Dictionary<string, bool>();
 			this.PerClientLayout = new Dictionary<string, Dictionary<string, Point>>();
@@ -716,6 +696,18 @@ namespace EveFPreview.Configuration.Implementation
 			this.PriorityClients ??= defaults.Value.PriorityClients;
 			this.ExecutablesToPreview ??= defaults.Value.ExecutablesToPreview;
 			this.CycleApps ??= defaults.Value.CycleApps;
+
+			// EVE-O's stock config came with per-client settings for two made-up characters, and they
+			// were saved into every config since. Nothing can ever match them, and the portrait
+			// download looked them up on ESI at every start (and failed).
+			foreach (string placeholder in ThumbnailConfiguration.PlaceholderClientTitles)
+			{
+				this.PerClientActiveClientHighlightColor.Remove(placeholder);
+				this.PerClientPreventPreviewColor.Remove(placeholder);
+				this.PerClientPreventPreviews.Remove(placeholder);
+				this.PerClientThumbnailSize.Remove(placeholder);
+				this.PerClientZoomAnchor.Remove(placeholder);
+			}
 			this.CycleApps.RemoveAll(x => x == null || string.IsNullOrWhiteSpace(x.Executable));
 		}
 
