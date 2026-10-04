@@ -20,7 +20,7 @@ namespace EveFPreview.Services.Implementation
 	sealed class CharacterPortraitService : ICharacterPortraitService, IDisposable
 	{
 		private const string DefaultClientTitle = "EVE";
-		private const string ThumbsFolderName = "thumbs";
+		internal const string ThumbsFolderName = "thumbs";
 		private const string PortraitLogFileName = "portrait-fetch.log";
 		private const string UserAgent = "EVE-F-Preview/1.0 (character portrait cache; fork of eve-o-preview)";
 		private const int MaxParallelDownloads = 6;

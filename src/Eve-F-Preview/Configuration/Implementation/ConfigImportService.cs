@@ -90,6 +90,7 @@ namespace EveFPreview.Configuration.Implementation
 						"'. Expected an EVE-O/EVE-F Preview config or an EVE-X config.");
 			}
 
+			ConfigImportService.KeepPortraitsInOwnFolder(config);
 			config.ApplyRestrictions();
 
 			string directory = Path.GetDirectoryName(destinationPath);
@@ -106,6 +107,41 @@ namespace EveFPreview.Configuration.Implementation
 		public static ExternalConfigFormat ImportToFile(string sourcePath, string destinationPath)
 		{
 			return ImportToFile(sourcePath, destinationPath, out _);
+		}
+
+		/// <summary>
+		/// An imported file may come from someone else, and it could name any folder for portraits
+		/// (and the fetch log next to them) or any file as a character's portrait. Portraits always
+		/// live in this app's own thumbs folder: the folder setting is dropped, and each portrait entry
+		/// keeps only its "&lt;character id&gt;.png" file name (that id is what positions and system names
+		/// are matched by), pointed at that folder. Missing files are re-downloaded at startup.
+		/// </summary>
+		private static void KeepPortraitsInOwnFolder(ThumbnailConfiguration config)
+		{
+			config.PortraitThumbnailsDirectory = string.Empty;
+
+			if (config.ClientPortraitPaths == null)
+			{
+				return;
+			}
+
+			string thumbsDirectory = Path.Combine(AppContext.BaseDirectory, EveFPreview.Services.Implementation.CharacterPortraitService.ThumbsFolderName);
+			foreach (string title in config.ClientPortraitPaths.Keys.ToList())
+			{
+				string fileName = Path.GetFileName(config.ClientPortraitPaths[title] ?? string.Empty);
+				bool isPortraitFile = Path.GetExtension(fileName).Equals(".png", StringComparison.OrdinalIgnoreCase)
+					&& long.TryParse(Path.GetFileNameWithoutExtension(fileName), out long characterId)
+					&& characterId > 0;
+
+				if (isPortraitFile)
+				{
+					config.ClientPortraitPaths[title] = Path.Combine(thumbsDirectory, fileName);
+				}
+				else
+				{
+					config.ClientPortraitPaths.Remove(title);
+				}
+			}
 		}
 
 		private static JObject TryParse(string path)
