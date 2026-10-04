@@ -622,9 +622,9 @@ namespace EveFPreview.Presenters
 			this.View.Close();
 		}
 
-		private void CloseAllEveClients()
+		private async void CloseAllEveClients()
 		{
-			const string text = "This will close all eve online windows are you sure?";
+			const string text = "Close all EVE clients?\n\nEach client is asked to close first; any still open after 5 seconds is force-closed.";
 			const string caption = "Close all EVE clients";
 			MessageBoxResult confirm = this.View is System.Windows.Window owner && owner.IsVisible
 				? MessageBox.Show(owner, text, caption, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No)
@@ -634,7 +634,15 @@ namespace EveFPreview.Presenters
 				return;
 			}
 
-			this._processMonitor.CloseAllMonitoredClients();
+			try
+			{
+				await this._processMonitor.CloseAllMonitoredClientsAsync();
+			}
+			catch (Exception ex)
+			{
+				// Closing clients is best-effort; never take the app down over it.
+				System.Diagnostics.Debug.WriteLine(ex);
+			}
 		}
 	}
 }

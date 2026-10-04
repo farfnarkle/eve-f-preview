@@ -168,7 +168,7 @@
 					<TextBlock Style="{StaticResource SectionTitle}" Text="Close clients" />
 					<Border Style="{StaticResource Card}">
 						<controls:CardStack>
-							<controls:SettingRow Title="Close all EVE clients" Description="Force-closes every running EVE client. You'll be asked to confirm.">
+							<controls:SettingRow Title="Close all EVE clients" Description="Asks every EVE client to close, and force-closes any still open 5 seconds later. You'll be asked to confirm.">
 								<Button x:Name="CloseAllEveClientsButton" Content="Close all" Style="{StaticResource DangerButton}" Click="CloseAllEveClients_Handler" />
 							</controls:SettingRow>
 						</controls:CardStack>

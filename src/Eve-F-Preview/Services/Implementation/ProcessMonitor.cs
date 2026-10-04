@@ -4,6 +4,8 @@ using EveFPreview.Services.Interop;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace EveFPreview.Services
 {
@@ -12,6 +14,9 @@ namespace EveFPreview.Services
 		#region Private constants
 		/// <summary>Windows / Wine EVE Online client process name (no .exe).</summary>
 		private const string EveOnlineClientProcessName = "exefile";
+
+		/// <summary>How long Close all EVE clients waits for clients to close themselves before force-closing them.</summary>
+		private static readonly TimeSpan GracefulCloseTimeout = TimeSpan.FromSeconds(5);
 		#endregion
 
 		#region Private fields
@@ -205,20 +210,44 @@ namespace EveFPreview.Services
 			return new string(buffer, 0, Math.Max(0, copied));
 		}
 
-		public void CloseAllMonitoredClients()
+		/// <summary>
+		/// Used to kill every client outright. Closing a client's window first lets EVE shut down the
+		/// way it does when you close it yourself (writing out its settings); only clients still running
+		/// after GracefulCloseTimeout - stuck, or held open by EVE's own quit prompt - are killed.
+		/// </summary>
+		public Task CloseAllMonitoredClientsAsync()
 		{
-			foreach (Process process in Process.GetProcesses())
-			{
-				using (process)
-				{
-					if (!string.Equals(process.ProcessName, EveOnlineClientProcessName, StringComparison.OrdinalIgnoreCase))
-					{
-						continue;
-					}
+			return ProcessMonitor.CloseGracefullyAsync(EveOnlineClientProcessName, ProcessMonitor.GracefulCloseTimeout);
+		}
 
+		internal static async Task CloseGracefullyAsync(string processName, TimeSpan timeout)
+		{
+			Process[] clients = Process.GetProcessesByName(processName);
+			try
+			{
+				foreach (Process client in clients)
+				{
 					try
 					{
-						process.Kill(entireProcessTree: true);
+						client.CloseMainWindow();
+					}
+					catch (InvalidOperationException)
+					{
+						// Already gone.
+					}
+				}
+
+				DateTime deadline = DateTime.UtcNow + timeout;
+				while (DateTime.UtcNow < deadline && clients.Any(client => !ProcessMonitor.HasExited(client)))
+				{
+					await Task.Delay(250);
+				}
+
+				foreach (Process client in clients.Where(client => !ProcessMonitor.HasExited(client)))
+				{
+					try
+					{
+						client.Kill(entireProcessTree: true);
 					}
 					catch (InvalidOperationException)
 					{
@@ -227,6 +256,26 @@ namespace EveFPreview.Services
 					{
 					}
 				}
+			}
+			finally
+			{
+				foreach (Process client in clients)
+				{
+					client.Dispose();
+				}
+			}
+		}
+
+		private static bool HasExited(Process process)
+		{
+			try
+			{
+				return process.HasExited;
+			}
+			catch (Exception ex) when (ex is InvalidOperationException || ex is System.ComponentModel.Win32Exception)
+			{
+				// Not ours to watch (e.g. elevated); waiting on it can't help.
+				return true;
 			}
 		}
 	}
