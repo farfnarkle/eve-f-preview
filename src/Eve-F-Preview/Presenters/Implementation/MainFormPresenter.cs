@@ -114,8 +114,8 @@ namespace EveFPreview.Presenters
 		}
 
 		/// <summary>
-		/// Notify-only: asks GitHub for the latest release on startup and every 12 hours, and tells the
-		/// view when it's newer than this build. Honors the "Check for updates" setting each round.
+		/// Notify-only: asks GitHub for the latest release once, on startup, and tells the view when it's
+		/// newer than this build (if the "Check for updates" setting is on).
 		/// </summary>
 		private async void StartUpdateChecks()
 		{
@@ -132,19 +132,16 @@ namespace EveFPreview.Presenters
 				return;
 			}
 
-			while (!this._exitApplication)
+			if (!this._configuration.CheckForUpdates)
 			{
-				if (this._configuration.CheckForUpdates)
-				{
-					UpdateChecker.UpdateInfo update = await UpdateChecker.CheckAsync(current).ConfigureAwait(true);
-					if (update != null)
-					{
-						bool showPopup = !string.Equals(this._configuration.SkippedUpdateVersion, update.Tag, StringComparison.OrdinalIgnoreCase);
-						this.View.SetUpdateAvailable(update.Tag, update.Url, update.ReleaseNotes, showPopup);
-					}
-				}
+				return;
+			}
 
-				await System.Threading.Tasks.Task.Delay(TimeSpan.FromHours(12)).ConfigureAwait(true);
+			UpdateChecker.UpdateInfo update = await UpdateChecker.CheckAsync(current).ConfigureAwait(true);
+			if (update != null)
+			{
+				bool showPopup = !string.Equals(this._configuration.SkippedUpdateVersion, update.Tag, StringComparison.OrdinalIgnoreCase);
+				this.View.SetUpdateAvailable(update.Tag, update.Url, update.ReleaseNotes, showPopup);
 			}
 		}
 
