@@ -53,6 +53,7 @@ namespace EveFPreview.Services
 
 		private bool _ignoreViewEvents;
 		private bool _isHoverEffectActive;
+		private IntPtr _lastForegroundWindowHandle;
 		private IntPtr _hoverZoomThumbnailId;
 		private IntPtr _focusedOverwatchThumbnailId;
 
@@ -1247,6 +1248,21 @@ namespace EveFPreview.Services
 			// Check if the foreground window handle is one of the known handles for client windows or their thumbnails
 			bool isClientWindow = this.IsClientWindowActive(foregroundWindowHandle);
 			bool isMainWindowActive = this.IsMainWindowActive(foregroundWindowHandle);
+
+			// A fullscreen EVE client makes itself always-on-top when it's activated, which puts it above
+			// the thumbnails (also always-on-top). Put them back on top whenever a client comes to the
+			// front. EVE-O did this as a side effect of WinForms re-applying TopMost on every refresh.
+			if (foregroundWindowHandle != this._lastForegroundWindowHandle)
+			{
+				this._lastForegroundWindowHandle = foregroundWindowHandle;
+				if (isClientWindow && !this._isHoverEffectActive)
+				{
+					foreach (IThumbnailView view in this._thumbnailViews.Values)
+					{
+						view.ReassertTopMost();
+					}
+				}
+			}
 
 			string foregroundWindowTitle = null;
 

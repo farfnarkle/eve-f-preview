@@ -17,6 +17,7 @@ namespace EveFPreview.Services.Interop
 		public const uint SWP_NOOWNERZORDER = 0x0200;
 
 		public static readonly IntPtr HWND_TOP = IntPtr.Zero;
+		public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
 
 		public const int WM_CLOSE = 0x0010;
 		public const int WM_WINDOWPOSCHANGED = 0x0047;

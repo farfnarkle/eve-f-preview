@@ -441,6 +441,20 @@ namespace EveFPreview.View
 			this._isTopMost = enableTopmost;
 		}
 
+		public void ReassertTopMost()
+		{
+			if (!this._isTopMost || !this.IsVisible)
+			{
+				return;
+			}
+
+			// WPF only touches the z-order when Topmost changes, so it has to be done directly. The
+			// overlay goes second so it stays above its thumbnail.
+			const uint flags = WindowNativeMethods.SWP_NOMOVE | WindowNativeMethods.SWP_NOSIZE | WindowNativeMethods.SWP_NOACTIVATE;
+			WindowNativeMethods.SetWindowPos(this._handle, WindowNativeMethods.HWND_TOPMOST, 0, 0, 0, 0, flags);
+			WindowNativeMethods.SetWindowPos(this._overlay.Handle, WindowNativeMethods.HWND_TOPMOST, 0, 0, 0, 0, flags);
+		}
+
 		public void SetClickThrough(bool enable)
 		{
 			ThumbnailView.ApplyClickThrough(this._handle, enable);

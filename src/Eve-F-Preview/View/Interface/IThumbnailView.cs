@@ -29,6 +29,9 @@ namespace EveFPreview.View
 		void SetOverlayLabel();
 		void SetCycleGroupIndicator(bool displayCycleGroup, ZoomAnchor anchor);
 		void SetTopMost(bool enableTopmost);
+
+		/// <summary>Puts an always-on-top thumbnail back above other always-on-top windows (e.g. a fullscreen EVE client).</summary>
+		void ReassertTopMost();
 		void SetClickThrough(bool enable);
 		void SetSystemName(string systemName);
 		void SetHighlight();
